@@ -31,3 +31,23 @@ Search `index.html` for these:
 
 - Every change you commit to the branch updates the live site automatically within a minute or two.
 - You can edit files directly on GitHub: open the file, click the pencil icon, make your change, then **Commit changes**.
+
+## Logo files
+
+All in `assets/logo/`. Use the **SVG** files wherever you can (website, printers, sign makers): they stay sharp at any size. Use the **PNG** files for Facebook, Instagram, Word and Canva.
+
+| File | Use it for |
+|---|---|
+| `craft-hereford-badge` | The main logo. Posters, flyers, cabinet signs, website. |
+| `craft-hereford-mark` | Hands and heart only. Instagram/Facebook profile picture, stickers, anything small. |
+| `craft-hereford-horizontal` | Wide spaces: email signatures, Facebook cover, banners. |
+| `craft-hereford-badge-white` | One colour, white. Vinyl on the glass cabinets, or on dark photos. |
+| `craft-hereford-original.png` | The original artwork, kept for reference. |
+
+**Colours**
+
+| | Hex |
+|---|---|
+| Craft blue | `#6894ae` |
+| Cream | `#f7e1b2` |
+| Deep blue (text) | `#2f5568` |
