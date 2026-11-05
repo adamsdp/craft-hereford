@@ -10,6 +10,7 @@
   --muted: #5c7280;
   --radius: 18px;
   --shadow: 0 8px 24px rgba(47, 85, 104, 0.12);
+  --font-display: "Comfortaa", "Quicksand", system-ui, sans-serif; /* the logo's typeface */
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -28,7 +29,7 @@ body {
 
 img { max-width: 100%; height: auto; display: block; }
 a { color: var(--blue-dark); }
-h1, h2, h3 { line-height: 1.2; color: var(--blue-deep); margin: 0 0 0.5em; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.25; color: var(--blue-deep); margin: 0 0 0.5em; }
 h3 { font-size: 1.2rem; }
 p { margin: 0 0 1em; }
 
@@ -47,7 +48,7 @@ p { margin: 0 0 1em; }
   border-bottom: 1px solid #e6eef3;
 }
 .header-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; }
-.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; font-size: 1.2rem; color: var(--blue-deep); }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--blue-deep); }
 .site-nav { display: flex; gap: 28px; }
 .site-nav a { text-decoration: none; font-weight: 600; color: var(--text); }
 .site-nav a:hover { color: var(--blue-dark); }
@@ -89,7 +90,7 @@ p { margin: 0 0 1em; }
 .step-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 52px; height: 52px; border-radius: 50%; margin-bottom: 16px;
-  background: var(--blue); color: var(--white); font-weight: 700; font-size: 1.4rem;
+  background: var(--blue); color: var(--white); font-family: var(--font-display); font-weight: 700; font-size: 1.4rem;
 }
 .step p { color: var(--muted); margin: 0; }
 
