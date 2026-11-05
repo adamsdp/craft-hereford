@@ -1,0 +1,50 @@
+CRAFT HEREFORD LOGO PACK
+========================
+
+Open Craft-Hereford-Logo-Guide.pdf first. It shows every version and when to use it.
+
+FOLDERS
+-------
+01-badge             The main round logo
+02-icon              Hands and heart only, for small spaces
+03-horizontal        Icon + name side by side, for wide spaces
+04-wordmark          The name on its own
+
+  Each of these has:
+    png/   See-through background. Small (500px), medium (1500px), large (3000px).
+           Use these for Word, Canva, Facebook, Instagram and everyday things.
+    jpg/   White background, for anywhere that won't accept PNG.
+    pdf/   Sharp at any size. Send these to printers and sign makers.
+    svg/   Sharp at any size. For websites and designers.
+
+  Colour versions:
+    colour                       Light backgrounds (the usual choice)
+    white                        Dark backgrounds and photos
+    blue / black                 One-colour printing, stamps, newsletters
+    white-outline (badge)        Vinyl lettering on the glass cabinets
+    for-dark-backgrounds         Horizontal logo on dark backgrounds, in colour
+
+  The white versions look blank on a white screen. That's normal.
+
+05-social-media      Ready to upload:
+    profile-picture-icon-1080    Instagram / Facebook profile picture (recommended)
+    profile-picture-badge-1080   Alternative profile picture with the full badge
+    facebook-cover-1640x624      Facebook page cover photo
+    link-preview-1200x630        The picture shown when the website is shared
+
+06-website-icons     Browser tab and phone home-screen icons
+
+07-email-signature   Logo for your email signature. Insert the 600px file
+                     and set its width to 300px so it stays sharp.
+
+COLOURS
+-------
+Craft blue   #6894AE   RGB 104 148 174
+Cream        #F7E1B2   RGB 247 225 178
+Deep blue    #2F5568   RGB 47 85 104
+Soft cream   #FDF6E7   RGB 253 246 231
+
+FONTS (free from fonts.google.com, fine for commercial use)
+-----
+Comfortaa    Headings and the logo lettering
+Quicksand    Everything else
