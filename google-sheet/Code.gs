@@ -14,7 +14,6 @@ var LOCATIONS = 'Locations';
 var SETTINGS = 'Settings';
 var CURRENCY = 'GBP';
 var SQUARE_VERSION = '2025-10-16';
-var CODE_PREFIX = 'CH-';
 var MAX_ROWS = 500;          // rows pre-filled with formulas and dropdowns on Products
 var LIST_ROWS = 1000;        // rows covered by the Makers / Locations dropdown ranges
 
@@ -30,8 +29,8 @@ var COL = {
   URL: 9, LINK_ID: 10, LISTED: 11, SOLD: 12,
   VENUE_GBP: 13, SELL_GBP: 14, MAKER_GBP: 15, PAID: 16
 };
-var MAKER_HEADERS = ['Name', 'Email', 'Phone', 'Address'];
-var LOCATION_HEADERS = ['Name', 'Venue commission %', 'Email', 'Phone', 'Address'];
+var MAKER_HEADERS = ['Name', 'Code', 'Email', 'Phone', 'Address'];
+var LOCATION_HEADERS = ['Name', 'Venue commission %', 'Code', 'Email', 'Phone', 'Address'];
 
 // Settings tab cells
 var SET_VENUE_DEFAULT = 'B2';
@@ -59,6 +58,14 @@ function venueGbpFormula_(r) { return '=IF(OR(E' + r + '="",F' + r + '=""),"",RO
 function sellGbpFormula_(r)  { return '=IF(OR(E' + r + '="",G' + r + '=""),"",ROUND(E' + r + '*G' + r + ',2))'; }
 function makerGbpFormula_(r) { return '=IF(OR(M' + r + '="",N' + r + '=""),"",E' + r + '-M' + r + '-N' + r + ')'; }
 
+/** Short code from a name in column A: initials ("Amanda Jones" -> AJ) or first 3 letters of a one-word name. */
+function shortCodeFormula_(r) {
+  var n = 'A' + r;
+  return '=IF(' + n + '="","",IF(ISNUMBER(FIND(" ",TRIM(' + n + '))),' +
+    'LEFT(REGEXREPLACE(UPPER(TRIM(' + n + ')),"([A-Z0-9])[A-Z0-9]*|[^A-Z0-9]","$1"),4),' +
+    'UPPER(LEFT(REGEXREPLACE(TRIM(' + n + '),"[^A-Za-z0-9]",""),3))))';
+}
+
 // ---- First-time setup (safe to run again) ----------------------------------
 function setupSheet() {
   var ss = SpreadsheetApp.getActive();
@@ -80,8 +87,8 @@ function setupSheet() {
   var settings = ss.getSheetByName(SETTINGS) || ss.insertSheet(SETTINGS);
 
   setupSettings_(settings);
-  setupList_(makers, MAKER_HEADERS, 'Example Maker', ['maker@example.com', '07700 900000', '1 Example Street, Hereford'], 3);
-  setupList_(locations, LOCATION_HEADERS, 'Example Cafe', [0.10, 'cafe@example.com', '01432 000000', '2 High Town, Hereford'], 4);
+  setupList_(makers, MAKER_HEADERS, ['Example Maker', '', 'maker@example.com', '07700 900000', '1 Example Street, Hereford'], 4, 2);
+  setupList_(locations, LOCATION_HEADERS, ['Example Cafe', 0.10, '', 'cafe@example.com', '01432 000000', '2 High Town, Hereford'], 5, 3);
   locations.getRange(2, 2, LIST_ROWS - 1, 1).setNumberFormat('0.0%');
   setupProducts_(products, makers, locations, settings);
 
@@ -109,15 +116,27 @@ function setupSettings_(sh) {
   sh.getRange('B2:B3').setBackground('#fff2cc');   // inputs you can change
 }
 
-function setupList_(sh, headers, exampleName, exampleRest, phoneCol) {
+function setupList_(sh, headers, exampleRow, phoneCol, codeCol) {
   sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
   sh.setFrozenRows(1);
-  if (sh.getLastRow() < 2) {
-    sh.getRange(2, 1, 1, 1 + exampleRest.length).setValues([[exampleName].concat(exampleRest)]);
+  if (sh.getLastRow() < 2) sh.getRange(2, 1, 1, exampleRow.length).setValues([exampleRow]);
+
+  // Short code for each name, used in item codes. It starts as a formula; type over it to choose your own.
+  var formulas = [];
+  for (var r = 2; r <= LIST_ROWS; r++) formulas.push([shortCodeFormula_(r)]);
+  var codeRange = sh.getRange(2, codeCol, LIST_ROWS - 1, 1);
+  var existing = codeRange.getFormulas();
+  for (var i = 0; i < formulas.length; i++) {
+    // Keep any code someone has typed over the formula.
+    if (!existing[i][0] && sh.getRange(i + 2, codeCol).getValue() !== '') formulas[i] = [sh.getRange(i + 2, codeCol).getValue()];
   }
+  codeRange.setFormulas(formulas);
+  codeRange.setFontWeight('bold');
+
   // Phone numbers are text, so a leading 0 is never dropped.
   sh.getRange(2, phoneCol, LIST_ROWS - 1, 1).setNumberFormat('@');
   sh.setColumnWidth(1, 180);
+  sh.setColumnWidth(codeCol, 70);
   sh.setColumnWidth(headers.length, 280);
 }
 
@@ -188,11 +207,24 @@ function productsEdited_(sh, rg) {
   var first = Math.max(rg.getRow(), 2);
   var last = Math.min(rg.getRow() + rg.getNumRows() - 1, MAX_ROWS + 1);
   var sellDefault = settingNumber_(SET_SELL_DEFAULT, 0.10);
+  var lookups = null, existing = null;
   for (var r = first; r <= last; r++) {
     // New product: fill the default selling commission.
     var hasDesc = String(sh.getRange(r, COL.DESC).getValue()).trim() !== '';
     var sell = sh.getRange(r, COL.SELL_PCT);
     if (hasDesc && sell.getValue() === '') sell.setValue(sellDefault);
+
+    // Both maker and location chosen: give the item its code (fixed once set).
+    var codeCell = sh.getRange(r, COL.CODE);
+    var maker = sh.getRange(r, COL.MAKER).getValue(), loc = sh.getRange(r, COL.LOCATION).getValue();
+    if (String(codeCell.getValue()).trim() === '' && maker !== '' && loc !== '') {
+      if (!lookups) {
+        lookups = codeLookups_();
+        existing = sh.getRange(2, COL.CODE, MAX_ROWS, 1).getValues().map(function (x) { return x[0]; });
+      }
+      var newCode = itemCodeFor_(lookups, maker, loc, existing);
+      if (newCode) codeCell.setValue(newCode);
+    }
 
     // Status changes: freeze the venue % when Sold, restore the formula otherwise.
     var status = sh.getRange(r, COL.STATUS).getValue();
@@ -273,13 +305,54 @@ function linkName(code, desc, maker) {
   return name.length > 255 ? name.substring(0, 252) + '...' : name;
 }
 
-function nextCode_(existingCodes) {
+/** Same rule as the sheet formula, used when a name has no code yet. */
+function initialsCode_(name) {
+  var t = String(name).trim();
+  if (!t) return '';
+  if (t.indexOf(' ') >= 0) {
+    return t.toUpperCase().replace(/([A-Z0-9])[A-Z0-9]*|[^A-Z0-9]/g, '$1').substring(0, 4);
+  }
+  return t.replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase();
+}
+
+/** LOCATION-MAKER-NNN, counting up per location + maker pair. */
+function buildItemCode_(locCode, makerCode, existingCodes) {
+  var prefix = locCode + '-' + makerCode + '-';
   var max = 0;
   existingCodes.forEach(function (c) {
-    var m = String(c).match(/(\d+)$/);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
+    c = String(c);
+    if (c.indexOf(prefix) === 0) {
+      var m = c.substring(prefix.length).match(/^(\d+)$/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
   });
-  return CODE_PREFIX + ('0000' + (max + 1)).slice(-4);
+  var n = String(max + 1);
+  while (n.length < 3) n = '0' + n;
+  return prefix + n;
+}
+
+/** Reads the Makers and Locations tabs once: name -> code. */
+function codeLookups_() {
+  var ss = SpreadsheetApp.getActive();
+  var out = { makers: {}, locations: {} };
+  var m = ss.getSheetByName(MAKERS), l = ss.getSheetByName(LOCATIONS);
+  if (m) m.getRange(2, 1, LIST_ROWS - 1, 2).getValues().forEach(function (r) {
+    var n = String(r[0]).trim(); if (n) out.makers[n] = String(r[1]).trim().toUpperCase() || initialsCode_(n);
+  });
+  if (l) l.getRange(2, 1, LIST_ROWS - 1, 3).getValues().forEach(function (r) {
+    var n = String(r[0]).trim(); if (n) out.locations[n] = String(r[2]).trim().toUpperCase() || initialsCode_(n);
+  });
+  return out;
+}
+
+/** Item code for a maker + location, or '' if either is unknown. existingCodes is updated. */
+function itemCodeFor_(lookups, maker, location, existingCodes) {
+  var mc = lookups.makers[String(maker).trim()];
+  var lc = lookups.locations[String(location).trim()];
+  if (!mc || !lc) return '';
+  var code = buildItemCode_(lc, mc, existingCodes);
+  existingCodes.push(code);
+  return code;
 }
 
 function buildPaymentLinkBody(row, locationId, idempotencyKey) {
@@ -306,6 +379,7 @@ function createLinks() {
   var range = sh.getRange(2, 1, last - 1, HEADERS.length);
   var data = range.getValues();
   var codes = data.map(function (r) { return r[COL.CODE - 1]; }).filter(String);
+  var lookups = codeLookups_();
 
   var made = 0, problems = [];
   for (var i = 0; i < data.length; i++) {
@@ -322,7 +396,10 @@ function createLinks() {
     if (typeof r[COL.SELL_PCT - 1] !== 'number') { problems.push('Row ' + rowNum + ': no selling commission'); continue; }
 
     var code = String(r[COL.CODE - 1]).trim();
-    if (!code) { code = nextCode_(codes); codes.push(code); }
+    if (!code) {
+      code = itemCodeFor_(lookups, r[COL.MAKER - 1], r[COL.LOCATION - 1], codes);
+      if (!code) { problems.push('Row ' + rowNum + ': could not make a code (maker or location not found on its tab)'); continue; }
+    }
 
     var body = buildPaymentLinkBody({
       code: code,

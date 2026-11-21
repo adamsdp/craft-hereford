@@ -2,7 +2,7 @@
 
 Type your products into a Google Sheet. One menu command creates a Square payment link for every new row, and another prints labels showing the **QR code, product description, maker name and price**.
 
-![Example label, 62 × 29 mm](label-example.png)
+![Example label, 62 × 29 mm: description, maker, price, QR code and item code](label-example.png)
 
 Files (in [`google-sheet/`](../google-sheet/)):
 
@@ -52,15 +52,15 @@ Start in sandbox: links work with Square's test cards and no real money moves.
 
 | Tab | What goes in it |
 |---|---|
-| **Makers** | One row per maker: name, email, phone, address. These names fill the **Maker** dropdown on Products. |
-| **Locations** | One row per venue: name, **venue commission %**, email, phone, address. These names fill the **Location** dropdown. A new location gets the default venue commission from Settings (10%); change it on its own row if that venue agreed something different. |
+| **Makers** | One row per maker: name, **code**, email, phone, address. These names fill the **Maker** dropdown on Products. The code fills itself in from the name (Amanda Jones → `AJ`); type over it to choose your own. |
+| **Locations** | One row per venue: name, **venue commission %**, **code**, email, phone, address. The code fills itself in like a maker's (Hereford Coffee House → `HCH`). These names fill the **Location** dropdown. A new location gets the default venue commission from Settings (10%); change it on its own row if that venue agreed something different. |
 | **Settings** | The default venue commission (10%), the default selling commission (10%), and the list of selling-commission rates offered in the dropdown (0%, 5%, 10%, 15%, 20%, 25%, 30%). Edit the list to add rates such as 12.5%. |
 | **Products** | One row per item (see below). |
 
 Add makers and locations first, and delete the example row on each tab. Keep names unique and spelled the way you want them to appear on labels. If you rename a maker or location, re-pick it on the Products rows that used it.
 
 ### Add products
-On the **Products** tab fill in **Product description**, **Maker** (dropdown), **Location** (dropdown) and **Price (GBP)**. Leave Item code, link and Status for the script. Keep descriptions short (about 40 characters or fewer); long ones are printed in a smaller font.
+On the **Products** tab fill in **Product description**, **Maker** (dropdown), **Location** (dropdown) and **Price (GBP)**. Leave Item code, link and Status for the script (the item code is made for you, see below). Keep descriptions short (about 40 characters or fewer); long ones are printed in a smaller font.
 
 The commission columns work like this:
 
@@ -72,9 +72,25 @@ Example: a £25.00 scarf in a café on 10% venue commission and 10% selling comm
 
 When you set an item's **Status** to *Sold*, its venue commission % is frozen, so changing a location's rate later doesn't alter past sales. (Setting the status back to Draft or Listed restores the lookup.)
 
+### Item codes
+
+Each item's code is made automatically as soon as you have picked both its **Maker** and its **Location**:
+
+```
+HCH-AJ-001
+ │   │   └─ number, counting up for that location + maker (001, 002, …)
+ │   └───── maker's code (Amanda Jones)
+ └───────── location's code (Hereford Coffee House)
+```
+
+- The code is saved as fixed text. It doesn't change if you sort or delete rows, or later change the maker or location of that row, so a printed label always matches the sheet and the Square payment.
+- The code appears in the Square payment link name and on the printed label, so a customer, a café or you can quote it.
+- Two makers (or two locations) can end up with the same code, for example Amanda Jones and Alan Jenkins are both `AJ`. These cells turn red. Type a different code over the formula (`AMJ`) **before** adding their items.
+- This needs the script installed (see setup). Without it, the Item code column stays empty and you'd type codes yourself.
+
 ### Create links
 **Craft Hereford → 1. Create Square links for new rows**.
-Each row without a link gets one, and the script writes back the item code (`CH-0001`, `CH-0002`, …), the link URL, and sets Status to *Listed*. Rows with a problem (no price, maker, location or commission rate) are skipped and listed in the message.
+Each row without a link gets one, and the script writes back the link URL, and sets Status to *Listed*. Rows with a problem (no price, maker, location or commission rate) are skipped and listed in the message.
 
 ### Print labels
 1. Optional: select the rows you want (select two or more rows). With no selection, every row with Status *Listed* is printed.

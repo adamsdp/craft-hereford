@@ -33,10 +33,9 @@
     .desc { flex: 1 1 0; min-height: 0; overflow: hidden; font-weight: bold; line-height: 1.1;
             font-size: calc(var(--h) * 0.13); }
     .maker { flex: 0 0 auto; font-size: calc(var(--h) * 0.1); line-height: 1.15; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .bottom { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: baseline; gap: 1mm; }
-    .price { font-weight: bold; font-size: calc(var(--h) * 0.22); line-height: 1.05; white-space: nowrap; }
-    .code { font-size: calc(var(--h) * 0.08); color: #333; white-space: nowrap; flex-shrink: 0; }
-    .scan { flex: 0 0 auto; font-size: calc(var(--h) * 0.075); color: #333; white-space: nowrap; overflow: hidden; }
+    .price { flex: 0 0 auto; font-weight: bold; font-size: calc(var(--h) * 0.22); line-height: 1.05; white-space: nowrap; }
+    .code { flex: 0 0 auto; font-size: calc(var(--h) * 0.095); line-height: 1.1; white-space: nowrap; overflow: hidden; }
+    .code b { letter-spacing: 0.02em; }
 
     @media print {
       #controls, #hint { display: none !important; }
@@ -100,11 +99,11 @@
           var text = el('div', 'text');
           text.appendChild(el('div', 'desc', r.desc));
           text.appendChild(el('div', 'maker', 'by ' + r.maker));
-          var bottom = el('div', 'bottom');
-          bottom.appendChild(el('div', 'price', r.price));
-          bottom.appendChild(el('div', 'code', r.code));
-          text.appendChild(bottom);
-          text.appendChild(el('div', 'scan', 'Scan to pay · Craft Hereford'));
+          text.appendChild(el('div', 'price', r.price));
+          var code = el('div', 'code');
+          code.appendChild(el('b', '', r.code));
+          code.appendChild(document.createTextNode(' \u00b7 Scan to pay'));
+          text.appendChild(code);
           label.appendChild(qr);
           label.appendChild(text);
           box.appendChild(label);
@@ -112,6 +111,7 @@
         }
       });
       fitDescriptions();
+      fitCodes();
       document.getElementById('status').textContent =
         rows.length ? count + ' label(s) ready.' : 'No rows to print. Create links first, or select rows with links.';
     }
@@ -125,6 +125,23 @@
         while (d.scrollHeight > d.clientHeight + 1 && size > min) {
           size -= 0.2;
           d.style.fontSize = size + 'mm';
+        }
+      });
+    }
+
+    // The item code is what matters: if it doesn't fit beside "Scan to pay", drop that text,
+    // then shrink the code itself down to a readable minimum.
+    function fitCodes() {
+      var h = Number(document.getElementById('h').value) || 29;
+      var min = h * 0.06;   // mm
+      document.querySelectorAll('.code').forEach(function (c) {
+        if (c.scrollWidth > c.clientWidth + 1 && c.lastChild && c.lastChild.nodeType === 3) {
+          c.removeChild(c.lastChild);
+        }
+        var size = h * 0.095;
+        while (c.scrollWidth > c.clientWidth + 1 && size > min) {
+          size -= 0.1;
+          c.style.fontSize = size + 'mm';
         }
       });
     }
