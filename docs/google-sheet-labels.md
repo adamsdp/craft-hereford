@@ -112,7 +112,7 @@ The report tabs are formulas, so they update by themselves; nothing needs the sc
 - When you pay a maker, tick **Maker paid?** on the Products tab. When you pay a venue its commission, tick **Venue paid?**. Both are tick boxes at the right-hand end of the row.
 
 ### Monthly report
-Type any date in the month you want in the yellow **Month** cell. You get:
+Choose a month from the **Month** dropdown (the last 36 months are listed). You get:
 - **Craft Hereford totals:** items sold, total sales, venue commission, Craft Hereford commission and the amount paid or payable to makers. A "Difference" line should read £0.00; if it doesn't, some sold item is missing a maker, location or commission.
 - **By maker:** items, sales, venue commission, Craft Hereford commission and what the maker receives.
 - **By venue:** items, sales and the venue's commission.
@@ -120,14 +120,21 @@ Type any date in the month you want in the yellow **Month** cell. You get:
 The two tables list up to 100 makers and 100 venues.
 
 ### Statements
-Choose a maker and/or a venue in the yellow cells (the month follows the Monthly report tab). You get that person's totals for the month plus every item sold, with a Paid? column, to copy or send to them.
+One statement is shown at a time, for either a maker or a venue, never both:
+1. **Statement for:** choose *Maker* or *Venue*.
+2. **Name:** choose from the list (it switches to match the type; if the name doesn't match the type you'll see a prompt and the statement stays empty).
+3. **Month:** choose a month.
+
+You get the totals for the month and every item sold, in date order, with a Paid? column. A maker's statement shows what the maker receives; a venue's shows the venue commission.
 
 ### Outstanding payments
-- **Outstanding payments** tab: every maker and every venue Craft Hereford still owes, with email, phone, the amount owed and the number of unpaid items, plus the two totals.
-- **Unpaid items** tab: each sold item where the maker or the venue is still unpaid.
-- The **Makers** and **Locations** tabs each have an **Outstanding (GBP)** and a **Payment due?** column (highlighted amber when *Yes*), so you can see who is owed at a glance.
+Also one at a time: choose *Maker* or *Venue*, then a name. It shows the amount Craft Hereford still owes them, how many items that covers, their email, phone and address, and each unpaid item.
 
-Amounts owed are based on sold items only, from the first sale ever, not just the chosen month.
+For an overview of everyone owed, use the **Outstanding (GBP)** and **Payment due?** columns on the **Makers** and **Locations** tabs (highlighted amber when *Yes*), or the **Unpaid items** tab, which lists every sold item where the maker or the venue is still unpaid. Tick Maker paid? / Venue paid? on the Products tab to clear an item.
+
+Amounts owed are based on sold items only, from the first sale ever, not just one month.
+
+The **Lists** tab holds the calculated lists behind the dropdowns. There is nothing to edit there.
 
 > **Setting up a second copy:** *Craft Hereford ▸ Set up sheet* builds the Products, Makers, Locations and Settings tabs, but not the four report tabs. To start another copy with everything, use **File ▸ Make a copy** on the finished sheet, then clear the product rows.
 
