@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <style>
+    :root { --w: 62mm; --h: 29mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: #000; }
+
+    /* ---- Controls (hidden when printing) ---- */
+    #controls { padding: 12px 16px; background: #f4f1ea; border-bottom: 1px solid #ccc; }
+    #controls label { margin-right: 14px; font-size: 13px; }
+    #controls input[type=number] { width: 60px; }
+    #controls button { padding: 6px 14px; font-size: 14px; cursor: pointer; }
+    #status { margin-left: 10px; font-size: 13px; color: #555; }
+    #hint { padding: 0 16px; font-size: 12px; color: #555; }
+    #preview { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+    /* ---- One label ---- */
+    .label {
+      width: var(--w); height: var(--h);
+      display: flex; align-items: center; gap: 2mm;
+      padding: 1.5mm;
+      overflow: hidden; background: #fff;
+      border: 0.2mm dashed #aaa;
+      page-break-after: always; break-after: page;
+    }
+    .qr { flex: 0 0 auto; height: calc(var(--h) - 3mm); width: calc(var(--h) - 3mm); }
+    .qr svg { width: 100%; height: 100%; display: block; }
+    .text { flex: 1 1 auto; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+    .desc { flex: 1 1 0; min-height: 0; overflow: hidden; font-weight: bold; line-height: 1.1;
+            font-size: calc(var(--h) * 0.13); }
+    .maker { flex: 0 0 auto; font-size: calc(var(--h) * 0.1); line-height: 1.15; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .bottom { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: baseline; gap: 1mm; }
+    .price { font-weight: bold; font-size: calc(var(--h) * 0.22); line-height: 1.05; white-space: nowrap; }
+    .code { font-size: calc(var(--h) * 0.08); color: #333; white-space: nowrap; flex-shrink: 0; }
+    .scan { flex: 0 0 auto; font-size: calc(var(--h) * 0.075); color: #333; white-space: nowrap; overflow: hidden; }
+
+    @media print {
+      #controls, #hint { display: none !important; }
+      #preview { display: block; padding: 0; }
+      .label { border: none; }
+    }
+  </style>
+  <style id="pageSize"></style>
+</head>
+<body>
+  <div id="controls">
+    <label>Label width (mm) <input type="number" id="w" min="10" max="200" step="1" value="62"></label>
+    <label>Height (mm) <input type="number" id="h" min="10" max="200" step="1" value="29"></label>
+    <label>Copies of each <input type="number" id="copies" min="1" max="20" value="1"></label>
+    <button id="refresh">Update preview</button>
+    <button id="print">Print</button>
+    <span id="status">Loading...</span>
+  </div>
+  <div id="hint">
+    Prints the rows you've selected (select 2+ rows), or every row with Status = Listed.
+    In the print window choose your label printer and set the paper size to your label size, margins None, scale 100%.
+  </div>
+  <div id="preview"></div>
+
+  <script>
+    var rows = [];
+
+    function qrSvg(url) {
+      var qr = qrcode(0, 'M');
+      qr.addData(url);
+      qr.make();
+      return qr.createSvgTag({ scalable: true, margin: 0 });
+    }
+
+    function applySize() {
+      var w = Number(document.getElementById('w').value) || 62;
+      var h = Number(document.getElementById('h').value) || 29;
+      document.documentElement.style.setProperty('--w', w + 'mm');
+      document.documentElement.style.setProperty('--h', h + 'mm');
+      document.getElementById('pageSize').textContent = '@page { size: ' + w + 'mm ' + h + 'mm; margin: 0; }';
+    }
+
+    function el(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    function render() {
+      applySize();
+      var copies = Math.max(1, Number(document.getElementById('copies').value) || 1);
+      var box = document.getElementById('preview');
+      box.innerHTML = '';
+      var count = 0;
+      rows.forEach(function (r) {
+        for (var c = 0; c < copies; c++) {
+          var label = el('div', 'label');
+          var qr = el('div', 'qr');
+          qr.innerHTML = qrSvg(r.url);   // SVG generated locally by the library from the URL
+          var text = el('div', 'text');
+          text.appendChild(el('div', 'desc', r.desc));
+          text.appendChild(el('div', 'maker', 'by ' + r.maker));
+          var bottom = el('div', 'bottom');
+          bottom.appendChild(el('div', 'price', r.price));
+          bottom.appendChild(el('div', 'code', r.code));
+          text.appendChild(bottom);
+          text.appendChild(el('div', 'scan', 'Scan to pay · Craft Hereford'));
+          label.appendChild(qr);
+          label.appendChild(text);
+          box.appendChild(label);
+          count++;
+        }
+      });
+      fitDescriptions();
+      document.getElementById('status').textContent =
+        rows.length ? count + ' label(s) ready.' : 'No rows to print. Create links first, or select rows with links.';
+    }
+
+    // Shrink long descriptions until they fit their box (down to a readable minimum).
+    function fitDescriptions() {
+      var h = Number(document.getElementById('h').value) || 29;
+      var min = h * 0.08;   // mm
+      document.querySelectorAll('.desc').forEach(function (d) {
+        var size = h * 0.13;
+        while (d.scrollHeight > d.clientHeight + 1 && size > min) {
+          size -= 0.2;
+          d.style.fontSize = size + 'mm';
+        }
+      });
+    }
+
+    function saveSettings() {
+      google.script.run.saveLabelSettings({
+        width: Number(document.getElementById('w').value),
+        height: Number(document.getElementById('h').value),
+        copies: Number(document.getElementById('copies').value)
+      });
+    }
+
+    document.getElementById('refresh').onclick = function () { saveSettings(); render(); };
+    document.getElementById('print').onclick = function () { saveSettings(); render(); window.print(); };
+
+    google.script.run.withSuccessHandler(function (s) {
+      document.getElementById('w').value = s.width;
+      document.getElementById('h').value = s.height;
+      document.getElementById('copies').value = s.copies;
+      google.script.run.withSuccessHandler(function (data) { rows = data; render(); })
+        .withFailureHandler(function (e) { document.getElementById('status').textContent = 'Error: ' + e.message; })
+        .getLabelRows();
+    }).getLabelSettings();
+  </script>
+</body>
+</html>

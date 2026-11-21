@@ -1,5 +1,7 @@
 # Selling cabinet items with Square QR codes
 
+> **Prefer to enter products in a Google Sheet and print labels automatically?** See [google-sheet-labels.md](google-sheet-labels.md). This page covers the manual, Dashboard-only route.
+
 How to give each item in a cabinet its own QR code. A customer scans it, pays on their phone, and the money goes to Craft Hereford's Square account. No website changes are needed: Square hosts the checkout page.
 
 > Menu names and fees below come from Square's UK help pages and may change. If a screen looks different, search Square's help for "Payment Links".

@@ -1,2 +1,2 @@
-Item code,Maker,Item name,Price (GBP),Cabinet / café,Date listed,Square link URL,Status,Sold date,Square payment ID,Maker paid?
-CH-0001,Example Maker,Hand-knitted scarf,25.00,Example Café,2026-11-21,https://square.link/u/xxxxxx,Listed,,,
+Item code,Product description,Maker,Price (GBP),Cabinet / cafe,Status,Square link URL,Square link ID,Date listed,Sold date,Maker paid?
+,Hand-knitted merino scarf,Example Maker,25.00,Example Cafe,Draft,,,,,

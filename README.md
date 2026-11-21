@@ -34,7 +34,8 @@ Search `index.html` for these:
 
 ## Selling with QR codes
 
-See [`docs/square-qr-codes.md`](docs/square-qr-codes.md) for how to make a Square payment link and printable QR code for each cabinet item, and `docs/product-tracker-template.csv` for tracking sales and maker payouts.
+- [`docs/google-sheet-labels.md`](docs/google-sheet-labels.md): enter products in a Google Sheet, create Square payment links, and print labels (QR code, description, maker, price) on a label printer. Scripts are in `google-sheet/`.
+- [`docs/square-qr-codes.md`](docs/square-qr-codes.md): the manual route, making each link in the Square Dashboard.
 
 ## Logo files
 
