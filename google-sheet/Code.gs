@@ -9,17 +9,34 @@
 
 // ---- Configuration ---------------------------------------------------------
 var SHEET_NAME = 'Products';
+var MAKERS = 'Makers';
+var LOCATIONS = 'Locations';
+var SETTINGS = 'Settings';
 var CURRENCY = 'GBP';
 var SQUARE_VERSION = '2025-10-16';
 var CODE_PREFIX = 'CH-';
+var MAX_ROWS = 500;          // rows pre-filled with formulas and dropdowns on Products
+var LIST_ROWS = 1000;        // rows covered by the Makers / Locations dropdown ranges
+
 var HEADERS = [
-  'Item code', 'Product description', 'Maker', 'Price (GBP)', 'Cabinet / cafe',
-  'Status', 'Square link URL', 'Square link ID', 'Date listed', 'Sold date', 'Maker paid?'
+  'Item code', 'Product description', 'Maker', 'Location', 'Price (GBP)',
+  'Venue commission %', 'Selling commission %', 'Status',
+  'Square link URL', 'Square link ID', 'Date listed', 'Sold date',
+  'Venue commission (GBP)', 'Craft Hereford commission (GBP)', 'Maker receives (GBP)', 'Maker paid?'
 ];
 var COL = {
-  CODE: 1, DESC: 2, MAKER: 3, PRICE: 4, CAFE: 5, STATUS: 6,
-  URL: 7, LINK_ID: 8, LISTED: 9, SOLD: 10, PAID: 11
+  CODE: 1, DESC: 2, MAKER: 3, LOCATION: 4, PRICE: 5,
+  VENUE_PCT: 6, SELL_PCT: 7, STATUS: 8,
+  URL: 9, LINK_ID: 10, LISTED: 11, SOLD: 12,
+  VENUE_GBP: 13, SELL_GBP: 14, MAKER_GBP: 15, PAID: 16
 };
+var MAKER_HEADERS = ['Name', 'Email', 'Phone', 'Address'];
+var LOCATION_HEADERS = ['Name', 'Venue commission %', 'Email', 'Phone', 'Address'];
+
+// Settings tab cells
+var SET_VENUE_DEFAULT = 'B2';
+var SET_SELL_DEFAULT = 'B3';
+var SET_CHOICES_FIRST_ROW = 6;   // selling-commission choices are listed from A6 down
 
 // ---- Menu ------------------------------------------------------------------
 function onOpen() {
@@ -33,28 +50,171 @@ function onOpen() {
     .addToUi();
 }
 
+// ---- Formulas (one per row; kept short so they are easy to read) ----------
+function venueFormula_(r) {
+  // Blank (not a guess) when the location is missing or has no rate, so the gap is visible.
+  return '=IF(D' + r + '="","",IFERROR(VLOOKUP(D' + r + ',' + LOCATIONS + '!$A:$B,2,FALSE),""))';
+}
+function venueGbpFormula_(r) { return '=IF(OR(E' + r + '="",F' + r + '=""),"",ROUND(E' + r + '*F' + r + ',2))'; }
+function sellGbpFormula_(r)  { return '=IF(OR(E' + r + '="",G' + r + '=""),"",ROUND(E' + r + '*G' + r + ',2))'; }
+function makerGbpFormula_(r) { return '=IF(OR(M' + r + '="",N' + r + '=""),"",E' + r + '-M' + r + '-N' + r + ')'; }
+
+// ---- First-time setup (safe to run again) ----------------------------------
 function setupSheet() {
   var ss = SpreadsheetApp.getActive();
-  var sh = ss.getSheetByName(SHEET_NAME);
-  if (!sh) {
-    // A sheet imported from the CSV template has its headers on the first tab: reuse it.
+
+  // Reuse the tab imported from the CSV template; its old layout is cleared.
+  var products = ss.getSheetByName(SHEET_NAME);
+  if (!products) {
     var first = ss.getSheets()[0];
-    if (first.getRange(1, 1).getValue() === HEADERS[0]) {
+    if (first.getRange(1, 1).getValue() === HEADERS[0] && ss.getSheets().length === 1) {
+      first.clear();
       first.setName(SHEET_NAME);
-      sh = first;
+      products = first;
     } else {
-      sh = ss.insertSheet(SHEET_NAME);
+      products = ss.insertSheet(SHEET_NAME);
     }
   }
-  sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold');
+  var makers = ss.getSheetByName(MAKERS) || ss.insertSheet(MAKERS);
+  var locations = ss.getSheetByName(LOCATIONS) || ss.insertSheet(LOCATIONS);
+  var settings = ss.getSheetByName(SETTINGS) || ss.insertSheet(SETTINGS);
+
+  setupSettings_(settings);
+  setupList_(makers, MAKER_HEADERS, 'Example Maker', ['maker@example.com', '07700 900000', '1 Example Street, Hereford']);
+  setupList_(locations, LOCATION_HEADERS, 'Example Cafe', [0.10, 'cafe@example.com', '01432 000000', '2 High Town, Hereford']);
+  locations.getRange(2, 2, LIST_ROWS - 1, 1).setNumberFormat('0.0%');
+  setupProducts_(products, makers, locations, settings);
+
+  ss.setActiveSheet(products);
+  SpreadsheetApp.getUi().alert(
+    'Sheet ready.\n\n1. Add your makers on the Makers tab and your venues on the Locations tab ' +
+    '(delete the example rows).\n2. Add products on the Products tab and pick Maker and Location from the dropdowns.');
+}
+
+function setupSettings_(sh) {
+  sh.getRange('A1:B1').setValues([['Setting', 'Value']]).setFontWeight('bold');
+  sh.getRange('A2:A3').setValues([['Default venue commission'], ['Default selling commission']]);
+  if (sh.getRange(SET_VENUE_DEFAULT).isBlank()) sh.getRange(SET_VENUE_DEFAULT).setValue(0.10);
+  if (sh.getRange(SET_SELL_DEFAULT).isBlank()) sh.getRange(SET_SELL_DEFAULT).setValue(0.10);
+  sh.getRange('A5').setValue('Selling commission choices (the dropdown on Products uses this list; add or edit values here)').setFontWeight('bold');
+  var r = SET_CHOICES_FIRST_ROW;
+  if (sh.getRange(r, 1).isBlank()) {
+    sh.getRange(r, 1, 7, 1).setValues([[0], [0.05], [0.10], [0.15], [0.20], [0.25], [0.30]]);
+  }
+  sh.getRange(SET_VENUE_DEFAULT + ':' + SET_SELL_DEFAULT).setNumberFormat('0.0%');
+  sh.getRange(r, 1, 30, 1).setNumberFormat('0.0%');
+  sh.getRange('A6:A35').setHorizontalAlignment('left');
+  sh.setColumnWidth(1, 330);
+  sh.setColumnWidth(2, 90);
+  sh.getRange('B2:B3').setBackground('#fff2cc');   // inputs you can change
+}
+
+function setupList_(sh, headers, exampleName, exampleRest) {
+  sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
   sh.setFrozenRows(1);
-  sh.getRange(2, COL.STATUS, 500, 1).setDataValidation(
-    SpreadsheetApp.newDataValidation().requireValueInList(['Draft', 'Listed', 'Sold'], true).build());
-  sh.getRange(2, COL.PRICE, 500, 1).setNumberFormat('"£"0.00');
-  sh.setColumnWidth(COL.DESC, 260);
-  sh.setColumnWidth(COL.URL, 220);
-  sh.getRange(2, COL.LINK_ID, 500, 1).setFontColor('#888888');
-  SpreadsheetApp.getUi().alert('Sheet ready. Add products from row 2, leaving Status as Draft or blank.');
+  if (sh.getLastRow() < 2) {
+    sh.getRange(2, 1, 1, 1 + exampleRest.length).setValues([[exampleName].concat(exampleRest)]);
+  }
+  sh.setColumnWidth(1, 180);
+  sh.setColumnWidth(headers.length, 280);
+}
+
+function setupProducts_(sh, makers, locations, settings) {
+  var n = MAX_ROWS;
+  sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold').setWrap(true);
+  sh.setFrozenRows(1);
+  sh.setFrozenColumns(2);
+
+  // Dropdowns
+  var range = function (s, a1) { return s.getRange(a1); };
+  sh.getRange(2, COL.MAKER, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInRange(range(makers, 'A2:A' + LIST_ROWS), true)
+    .setAllowInvalid(false).setHelpText('Pick a maker from the Makers tab').build());
+  sh.getRange(2, COL.LOCATION, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInRange(range(locations, 'A2:A' + LIST_ROWS), true)
+    .setAllowInvalid(false).setHelpText('Pick a location from the Locations tab').build());
+  sh.getRange(2, COL.SELL_PCT, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInRange(range(settings, 'A' + SET_CHOICES_FIRST_ROW + ':A' + (SET_CHOICES_FIRST_ROW + 29)), true)
+    .setAllowInvalid(false).setHelpText('Choose a rate; to add rates, edit the list on the Settings tab').build());
+  sh.getRange(2, COL.STATUS, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Draft', 'Listed', 'Sold'], true).build());
+
+  // Formulas. A Sold row keeps its frozen venue % so later rate changes don't alter it.
+  var status = sh.getRange(2, COL.STATUS, n, 1).getValues();
+  var venueCol = sh.getRange(2, COL.VENUE_PCT, n, 1).getFormulas();
+  var venueVals = sh.getRange(2, COL.VENUE_PCT, n, 1).getValues();
+  var venue = [], gbp = [];
+  for (var i = 0; i < n; i++) {
+    var r = i + 2;
+    if (status[i][0] === 'Sold' && !venueCol[i][0] && venueVals[i][0] !== '') venue.push([venueVals[i][0]]);
+    else venue.push([venueFormula_(r)]);
+    gbp.push([venueGbpFormula_(r), sellGbpFormula_(r), makerGbpFormula_(r)]);
+  }
+  sh.getRange(2, COL.VENUE_PCT, n, 1).setFormulas(venue);
+  sh.getRange(2, COL.VENUE_GBP, n, 3).setFormulas(gbp);
+
+  // Formats
+  sh.getRange(2, COL.PRICE, n, 1).setNumberFormat('"£"0.00');
+  sh.getRange(2, COL.VENUE_PCT, n, 2).setNumberFormat('0.0%');
+  sh.getRange(2, COL.VENUE_GBP, n, 3).setNumberFormat('"£"0.00');
+  sh.getRange(2, COL.LISTED, n, 2).setNumberFormat('dd mmm yyyy');
+  sh.getRange(2, COL.VENUE_PCT, n, 1).setFontColor('#555555');          // set by the location
+  sh.getRange(2, COL.LINK_ID, n, 1).setFontColor('#888888');
+  sh.getRange(2, COL.VENUE_GBP, n, 3).setBackground('#f3f3f3');         // calculated
+  sh.getRange(1, COL.VENUE_GBP, 1, 3).setBackground('#e0e0e0');
+
+  var widths = [80, 260, 150, 150, 80, 90, 90, 70, 220, 120, 90, 90, 100, 120, 100, 80];
+  widths.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
+}
+
+// ---- Automatic defaults when you type in the sheet -------------------------
+/** Simple trigger: runs on every manual edit, no authorisation needed. */
+function onEdit(e) {
+  if (!e || !e.range) return;
+  var sh = e.range.getSheet();
+  var name = sh.getName();
+  if (name === SHEET_NAME) productsEdited_(sh, e.range);
+  else if (name === LOCATIONS) locationsEdited_(sh, e.range);
+}
+
+function settingNumber_(a1, fallback) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(SETTINGS);
+  var v = sh ? sh.getRange(a1).getValue() : '';
+  return typeof v === 'number' ? v : fallback;
+}
+
+function productsEdited_(sh, rg) {
+  var first = Math.max(rg.getRow(), 2);
+  var last = Math.min(rg.getRow() + rg.getNumRows() - 1, MAX_ROWS + 1);
+  var sellDefault = settingNumber_(SET_SELL_DEFAULT, 0.10);
+  for (var r = first; r <= last; r++) {
+    // New product: fill the default selling commission.
+    var hasDesc = String(sh.getRange(r, COL.DESC).getValue()).trim() !== '';
+    var sell = sh.getRange(r, COL.SELL_PCT);
+    if (hasDesc && sell.getValue() === '') sell.setValue(sellDefault);
+
+    // Status changes: freeze the venue % when Sold, restore the formula otherwise.
+    var status = sh.getRange(r, COL.STATUS).getValue();
+    var venue = sh.getRange(r, COL.VENUE_PCT);
+    if (status === 'Sold') {
+      if (venue.getFormula()) venue.setValue(venue.getValue());
+      var sold = sh.getRange(r, COL.SOLD);
+      if (sold.getValue() === '') sold.setValue(new Date());
+    } else if (!venue.getFormula()) {
+      venue.setFormula(venueFormula_(r));
+    }
+  }
+}
+
+function locationsEdited_(sh, rg) {
+  var first = Math.max(rg.getRow(), 2);
+  var last = Math.min(rg.getRow() + rg.getNumRows() - 1, LIST_ROWS);
+  var venueDefault = settingNumber_(SET_VENUE_DEFAULT, 0.10);
+  for (var r = first; r <= last; r++) {
+    var named = String(sh.getRange(r, 1).getValue()).trim() !== '';
+    var pct = sh.getRange(r, 2);
+    if (named && pct.getValue() === '') pct.setValue(venueDefault);
+  }
 }
 
 // ---- Square connection -----------------------------------------------------
@@ -129,7 +289,7 @@ function buildPaymentLinkBody(row, locationId, idempotencyKey) {
       price_money: { amount: row.pence, currency: CURRENCY },
       location_id: locationId
     },
-    payment_note: row.code + ' | ' + row.maker + ' | ' + row.desc
+    payment_note: row.code + ' | ' + row.maker + ' | ' + (row.location || '') + ' | ' + row.desc
   };
 }
 
@@ -155,6 +315,10 @@ function createLinks() {
     var pence = toPence(r[COL.PRICE - 1]);
     if (!pence) { problems.push('Row ' + rowNum + ': missing or invalid price'); continue; }
     if (!String(r[COL.MAKER - 1]).trim()) { problems.push('Row ' + rowNum + ': missing maker'); continue; }
+    if (!String(r[COL.LOCATION - 1]).trim()) { problems.push('Row ' + rowNum + ': missing location'); continue; }
+
+    if (typeof r[COL.VENUE_PCT - 1] !== 'number') { problems.push('Row ' + rowNum + ': no venue commission (check the location has one on the Locations tab)'); continue; }
+    if (typeof r[COL.SELL_PCT - 1] !== 'number') { problems.push('Row ' + rowNum + ': no selling commission'); continue; }
 
     var code = String(r[COL.CODE - 1]).trim();
     if (!code) { code = nextCode_(codes); codes.push(code); }
@@ -163,6 +327,7 @@ function createLinks() {
       code: code,
       desc: String(r[COL.DESC - 1]).trim(),
       maker: String(r[COL.MAKER - 1]).trim(),
+      location: String(r[COL.LOCATION - 1]).trim(),
       pence: pence
     }, cfg.location, Utilities.getUuid());
 
