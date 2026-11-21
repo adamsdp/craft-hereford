@@ -80,8 +80,8 @@ function setupSheet() {
   var settings = ss.getSheetByName(SETTINGS) || ss.insertSheet(SETTINGS);
 
   setupSettings_(settings);
-  setupList_(makers, MAKER_HEADERS, 'Example Maker', ['maker@example.com', '07700 900000', '1 Example Street, Hereford']);
-  setupList_(locations, LOCATION_HEADERS, 'Example Cafe', [0.10, 'cafe@example.com', '01432 000000', '2 High Town, Hereford']);
+  setupList_(makers, MAKER_HEADERS, 'Example Maker', ['maker@example.com', '07700 900000', '1 Example Street, Hereford'], 3);
+  setupList_(locations, LOCATION_HEADERS, 'Example Cafe', [0.10, 'cafe@example.com', '01432 000000', '2 High Town, Hereford'], 4);
   locations.getRange(2, 2, LIST_ROWS - 1, 1).setNumberFormat('0.0%');
   setupProducts_(products, makers, locations, settings);
 
@@ -109,12 +109,14 @@ function setupSettings_(sh) {
   sh.getRange('B2:B3').setBackground('#fff2cc');   // inputs you can change
 }
 
-function setupList_(sh, headers, exampleName, exampleRest) {
+function setupList_(sh, headers, exampleName, exampleRest, phoneCol) {
   sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
   sh.setFrozenRows(1);
   if (sh.getLastRow() < 2) {
     sh.getRange(2, 1, 1, 1 + exampleRest.length).setValues([[exampleName].concat(exampleRest)]);
   }
+  // Phone numbers are text, so a leading 0 is never dropped.
+  sh.getRange(2, phoneCol, LIST_ROWS - 1, 1).setNumberFormat('@');
   sh.setColumnWidth(1, 180);
   sh.setColumnWidth(headers.length, 280);
 }
@@ -123,7 +125,6 @@ function setupProducts_(sh, makers, locations, settings) {
   var n = MAX_ROWS;
   sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold').setWrap(true);
   sh.setFrozenRows(1);
-  sh.setFrozenColumns(2);
 
   // Dropdowns
   var range = function (s, a1) { return s.getRange(a1); };
