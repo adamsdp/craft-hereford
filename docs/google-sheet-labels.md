@@ -107,7 +107,7 @@ I tested the label page and helper functions in a sandbox environment, but not a
 - the checkout page shows the item name, price and your maker/code details.
 - the **Selling commission %** dropdown shows the percentages and, when you pick one, stores the right number (e.g. 15% stays 0.15).
 - the Maker and Location dropdowns list what's on the Makers and Locations tabs, and a new name appears straight away.
-- the default selling commission fills in when you type a description (this runs on manual edits only, not on pasted-in rows from another program that bypass the editor, so check pasted rows).
+- the default selling commission fills in when you type a description (this runs when you type or paste in the editor, but not for rows added by an import or another script, so check those).
 - the Square API version in `Code.gs` (`SQUARE_VERSION`) is still supported; Square's [API docs](https://developer.squareup.com/reference/square/checkout-api/create-payment-link) list current versions.
 
 If the API route proves awkward, you can still paste links in by hand: create each link in the Square Dashboard ([guide](square-qr-codes.md)), paste the URL into **Square link URL**, set Status to *Listed*, and use the print step as normal.
