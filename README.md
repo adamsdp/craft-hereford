@@ -32,6 +32,10 @@ Search `index.html` for these:
 - Every change you commit to the branch updates the live site automatically within a minute or two.
 - You can edit files directly on GitHub: open the file, click the pencil icon, make your change, then **Commit changes**.
 
+## Selling with QR codes
+
+See [`docs/square-qr-codes.md`](docs/square-qr-codes.md) for how to make a Square payment link and printable QR code for each cabinet item, and `docs/product-tracker-template.csv` for tracking sales and maker payouts.
+
 ## Logo files
 
 All in `assets/logo/`. Use the **SVG** files wherever you can (website, printers, sign makers): they stay sharp at any size. Use the **PNG** files for Facebook, Instagram, Word and Canva.
