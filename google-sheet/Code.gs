@@ -21,16 +21,16 @@ var HEADERS = [
   'Item code', 'Product description', 'Maker', 'Location', 'Price (GBP)',
   'Venue commission %', 'Selling commission %', 'Status',
   'Square link URL', 'Square link ID', 'Date listed', 'Sold date',
-  'Venue commission (GBP)', 'Craft Hereford commission (GBP)', 'Maker receives (GBP)', 'Maker paid?'
+  'Venue commission (GBP)', 'Craft Hereford commission (GBP)', 'Maker receives (GBP)', 'Maker paid?', 'Venue paid?'
 ];
 var COL = {
   CODE: 1, DESC: 2, MAKER: 3, LOCATION: 4, PRICE: 5,
   VENUE_PCT: 6, SELL_PCT: 7, STATUS: 8,
   URL: 9, LINK_ID: 10, LISTED: 11, SOLD: 12,
-  VENUE_GBP: 13, SELL_GBP: 14, MAKER_GBP: 15, PAID: 16
+  VENUE_GBP: 13, SELL_GBP: 14, MAKER_GBP: 15, PAID: 16, VENUE_PAID: 17
 };
-var MAKER_HEADERS = ['Name', 'Code', 'Email', 'Phone', 'Address'];
-var LOCATION_HEADERS = ['Name', 'Venue commission %', 'Code', 'Email', 'Phone', 'Address'];
+var MAKER_HEADERS = ['Name', 'Code', 'Email', 'Phone', 'Address', 'Outstanding (GBP)', 'Payment due?'];
+var LOCATION_HEADERS = ['Name', 'Venue commission %', 'Code', 'Email', 'Phone', 'Address', 'Outstanding (GBP)', 'Payment due?'];
 
 // Settings tab cells
 var SET_VENUE_DEFAULT = 'B2';
@@ -90,6 +90,9 @@ function setupSheet() {
   setupList_(makers, MAKER_HEADERS, ['Example Maker', '', 'maker@example.com', '07700 900000', '1 Example Street, Hereford'], 4, 2);
   setupList_(locations, LOCATION_HEADERS, ['Example Cafe', 0.10, '', 'cafe@example.com', '01432 000000', '2 High Town, Hereford'], 5, 3);
   locations.getRange(2, 2, LIST_ROWS - 1, 1).setNumberFormat('0.0%');
+  // Amount Craft Hereford still owes each maker / venue: sold items whose Paid? box isn't ticked.
+  setupOutstanding_(makers, 6, 'Products!$O:$O', 'Products!$C:$C', 'Products!$P:$P');
+  setupOutstanding_(locations, 7, 'Products!$M:$M', 'Products!$D:$D', 'Products!$Q:$Q');
   setupProducts_(products, makers, locations, settings);
 
   ss.setActiveSheet(products);
@@ -140,6 +143,27 @@ function setupList_(sh, headers, exampleRow, phoneCol, codeCol) {
   sh.setColumnWidth(headers.length, 280);
 }
 
+function setupOutstanding_(sh, amountCol, sumRange, matchRange, paidRange) {
+  var amountLetter = String.fromCharCode(64 + amountCol);
+  var rows = [];
+  for (var r = 2; r <= LIST_ROWS; r++) {
+    rows.push([
+      '=IF(A' + r + '="","",SUMIFS(' + sumRange + ',' + matchRange + ',A' + r + ',Products!$H:$H,"Sold",' + paidRange + ',"<>TRUE"))',
+      '=IF(A' + r + '="","",IF(' + amountLetter + r + '>0,"Yes","No"))'
+    ]);
+  }
+  sh.getRange(2, amountCol, LIST_ROWS - 1, 2).setFormulas(rows);
+  sh.getRange(2, amountCol, LIST_ROWS - 1, 1).setNumberFormat('"£"0.00');
+  sh.setColumnWidth(amountCol, 120);
+  sh.setColumnWidth(amountCol + 1, 110);
+  var due = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=$' + String.fromCharCode(65 + amountCol) + '2="Yes"')
+    .setBackground('#ffe599')
+    .setRanges([sh.getRange(2, amountCol, LIST_ROWS - 1, 2)])
+    .build();
+  sh.setConditionalFormatRules(sh.getConditionalFormatRules().concat([due]));
+}
+
 function setupProducts_(sh, makers, locations, settings) {
   var n = MAX_ROWS;
   sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold').setWrap(true);
@@ -173,6 +197,9 @@ function setupProducts_(sh, makers, locations, settings) {
   sh.getRange(2, COL.VENUE_PCT, n, 1).setFormulas(venue);
   sh.getRange(2, COL.VENUE_GBP, n, 3).setFormulas(gbp);
 
+  // Tick boxes: has the maker / the venue been paid?
+  sh.getRange(2, COL.PAID, n, 2).insertCheckboxes();
+
   // Formats
   sh.getRange(2, COL.PRICE, n, 1).setNumberFormat('"£"0.00');
   sh.getRange(2, COL.VENUE_PCT, n, 2).setNumberFormat('0.0%');
@@ -183,7 +210,7 @@ function setupProducts_(sh, makers, locations, settings) {
   sh.getRange(2, COL.VENUE_GBP, n, 3).setBackground('#f3f3f3');         // calculated
   sh.getRange(1, COL.VENUE_GBP, 1, 3).setBackground('#e0e0e0');
 
-  var widths = [80, 260, 150, 150, 80, 90, 90, 70, 220, 120, 90, 90, 100, 120, 100, 80];
+  var widths = [90, 260, 150, 150, 90, 110, 110, 80, 220, 130, 100, 100, 120, 140, 120, 90, 90];
   widths.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
 }
 

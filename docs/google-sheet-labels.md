@@ -103,6 +103,34 @@ Each row without a link gets one, and the script writes back the link URL, and s
 ### When an item sells
 Set **Status** to *Sold* (this also stamps the sold date) and run **3. Switch off links for sold items**. This deletes the Square link, so a second person scanning an old label cannot pay for an item that is gone. Then take the label out of the cabinet.
 
+## Reports and payments
+
+The report tabs are formulas, so they update by themselves; nothing needs the script.
+
+### Recording sales and payments
+- An item counts as sold when its **Status** is *Sold*. Its **Sold date** (stamped automatically, editable) decides which month it appears in.
+- When you pay a maker, tick **Maker paid?** on the Products tab. When you pay a venue its commission, tick **Venue paid?**. Both are tick boxes at the right-hand end of the row.
+
+### Monthly report
+Type any date in the month you want in the yellow **Month** cell. You get:
+- **Craft Hereford totals:** items sold, total sales, venue commission, Craft Hereford commission and the amount paid or payable to makers. A "Difference" line should read £0.00; if it doesn't, some sold item is missing a maker, location or commission.
+- **By maker:** items, sales, venue commission, Craft Hereford commission and what the maker receives.
+- **By venue:** items, sales and the venue's commission.
+
+The two tables list up to 100 makers and 100 venues.
+
+### Statements
+Choose a maker and/or a venue in the yellow cells (the month follows the Monthly report tab). You get that person's totals for the month plus every item sold, with a Paid? column, to copy or send to them.
+
+### Outstanding payments
+- **Outstanding payments** tab: every maker and every venue Craft Hereford still owes, with email, phone, the amount owed and the number of unpaid items, plus the two totals.
+- **Unpaid items** tab: each sold item where the maker or the venue is still unpaid.
+- The **Makers** and **Locations** tabs each have an **Outstanding (GBP)** and a **Payment due?** column (highlighted amber when *Yes*), so you can see who is owed at a glance.
+
+Amounts owed are based on sold items only, from the first sale ever, not just the chosen month.
+
+> **Setting up a second copy:** *Craft Hereford ▸ Set up sheet* builds the Products, Makers, Locations and Settings tabs, but not the four report tabs. To start another copy with everything, use **File ▸ Make a copy** on the finished sheet, then clear the product rows.
+
 ## Label printer tips
 
 - Common sizes: Brother DK-11209 is 62 × 29 mm (the default here); Dymo 99010 is 89 × 28 mm. Check the box your labels came in.
