@@ -35,7 +35,17 @@ function onOpen() {
 
 function setupSheet() {
   var ss = SpreadsheetApp.getActive();
-  var sh = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
+  var sh = ss.getSheetByName(SHEET_NAME);
+  if (!sh) {
+    // A sheet imported from the CSV template has its headers on the first tab: reuse it.
+    var first = ss.getSheets()[0];
+    if (first.getRange(1, 1).getValue() === HEADERS[0]) {
+      first.setName(SHEET_NAME);
+      sh = first;
+    } else {
+      sh = ss.insertSheet(SHEET_NAME);
+    }
+  }
   sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold');
   sh.setFrozenRows(1);
   sh.getRange(2, COL.STATUS, 500, 1).setDataValidation(
