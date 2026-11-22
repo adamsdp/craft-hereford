@@ -47,15 +47,24 @@ function flush_() {
 
 // ---- Menu ------------------------------------------------------------------
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('Craft Hereford')
-    .addItem('1. Create Square links for new rows', 'createLinks')
-    .addItem('2. Print tags...', 'showLabelDialog')
-    .addItem('3. Sync sales from Square', 'syncSales')
-    .addItem('4. Switch off links for sold items', 'disableSoldLinks')
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('Craft Hereford')
+    .addItem('How to use this sheet', 'openStartHere')
     .addSeparator()
-    .addItem('Set up sheet (first time)', 'setupSheet')
-    .addItem('Connect to Square...', 'connectSquare')
-    .addItem('Check Square connection', 'checkSquare')
+    .addItem('1. Create payment links for new items', 'createLinks')
+    .addItem('2. Print tags', 'showLabelDialog')
+    .addItem('3. Update sold items from Square', 'syncSales')
+    .addSeparator()
+    .addSubMenu(ui.createMenu('Print reports')
+      .addItem('Monthly report', 'showPrintMonthly')
+      .addItem('Statement for a maker or venue', 'showPrintStatement')
+      .addItem('Outstanding payment for a maker or venue', 'showPrintOutstanding'))
+    .addSeparator()
+    .addSubMenu(ui.createMenu('Setup and checks (admin)')
+      .addItem('Connect to Square', 'connectSquare')
+      .addItem('Check Square connection', 'checkSquare')
+      .addItem('Switch off links for sold items', 'disableSoldLinks')
+      .addItem('Set up sheet (first time only)', 'setupSheet'))
     .addToUi();
 }
 
@@ -521,9 +530,10 @@ function createLinks() {
     made++;
   }
 
-  var summary = made + ' link(s) created in ' + cfg.env + ' mode.';
+  var summary = made + ' payment link(s) created' + (cfg.env === 'sandbox' ? ' (TEST mode: no real payments)' : '') + '.';
+  if (made) summary += '\n\nNext: print the tags with "2. Print tags".';
   if (walletsRefused) summary += '\n\nNote: Square would not accept the Apple Pay / Google Pay setting for ' + walletsRefused + ' link(s), so those links were made without it.';
-  if (problems.length) summary += '\n\nSkipped:\n' + problems.join('\n');
+  if (problems.length) summary += '\n\nThese items need fixing before they can get a link:\n' + problems.join('\n');
   flush_();
   ui.alert(summary);
 }
@@ -726,7 +736,7 @@ function syncSales() {
   payments.forEach(function (p) { byStatus[p.status || '?'] = (byStatus[p.status || '?'] || 0) + 1; });
   var statusText = Object.keys(byStatus).map(function (k) { return byStatus[k] + ' ' + k.toLowerCase(); }).join(', ');
 
-  var msg = 'Synced with Square (' + cfg.env + '), payments since ' + begin.toISOString().slice(0, 10) + '.\n\n' +
+  var msg = 'Updated from Square' + (cfg.env === 'sandbox' ? ' (TEST mode)' : '') + '. Payments since ' + begin.toISOString().slice(0, 10) + '.\n\n' +
     '• Square returned ' + payments.length + ' payment(s) for this location' + (payments.length ? ' (' + statusText + ')' : '') + '\n' +
     '• ' + res.newlySold.length + ' item(s) newly marked Sold' + (res.newlySold.length ? ':' + listShort_(res.newlySold, 10) : '') + '\n' +
     '• ' + res.alreadyDone + ' already up to date\n' +
@@ -814,6 +824,153 @@ function checkSquare() {
     } catch (e) { lines.push('Could not read payments at ' + (l.name || l.id) + ': ' + e.message); }
   });
   ui.alert(lines.join('\n'));
+}
+
+// ---- Help and printing reports ----------------------------------------------
+var START_SHEET = 'Start here';
+var LISTS_SHEET = 'Lists';
+var REPORT_SHEETS = { monthly: 'Monthly report', statement: 'Statements', outstanding: 'Outstanding payments' };
+var PRINT_TITLES = { monthly: 'Print the monthly report', statement: 'Print a statement', outstanding: 'Print an outstanding payment' };
+
+function openStartHere() {
+  var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName(START_SHEET);
+  if (sh) ss.setActiveSheet(sh);
+  else SpreadsheetApp.getUi().alert('The "' + START_SHEET + '" tab has gone missing. Ask whoever set up the sheet to restore it.');
+}
+
+function showPrintMonthly() { showPrintDialog_('monthly'); }
+function showPrintStatement() { showPrintDialog_('statement'); }
+function showPrintOutstanding() { showPrintDialog_('outstanding'); }
+
+function showPrintDialog_(kind) {
+  var t = HtmlService.createTemplateFromFile('Print');
+  t.kind = kind;
+  SpreadsheetApp.getUi().showModalDialog(t.evaluate().setWidth(900).setHeight(760), PRINT_TITLES[kind]);
+}
+
+function namesOn_(ss, sheetName) {
+  var sh = ss.getSheetByName(sheetName);
+  if (!sh) return [];
+  return sh.getRange(2, 1, LIST_ROWS - 1, 1).getValues()
+    .map(function (r) { return String(r[0]).trim(); }).filter(String);
+}
+
+/** The choices for the print dialog's dropdowns, and what is currently chosen on the report tab. */
+function getPrintOptions(kind) {
+  if (!REPORT_SHEETS[kind]) throw new Error('Unknown report.');
+  var ss = SpreadsheetApp.getActive();
+  var lists = ss.getSheetByName(LISTS_SHEET), rep = ss.getSheetByName(REPORT_SHEETS[kind]);
+  var months = lists ? lists.getRange('B2:B37').getDisplayValues().map(function (r) { return r[0]; }).filter(String) : [];
+  var cur = {};
+  if (rep) {
+    if (kind === 'monthly') cur.month = rep.getRange('B3').getDisplayValue();
+    else {
+      cur.type = rep.getRange('B4').getDisplayValue();
+      cur.name = rep.getRange('B5').getDisplayValue();
+      if (kind === 'statement') cur.month = rep.getRange('B6').getDisplayValue();
+    }
+  }
+  return { months: months, makers: namesOn_(ss, MAKERS), venues: namesOn_(ss, LOCATIONS), current: cur };
+}
+
+function setIfChanged_(range, value) {
+  if (value !== undefined && value !== '' && range.getDisplayValue() !== value) range.setValue(value);
+}
+
+function whoFor_(ss, type, name) {
+  var sh = ss.getSheetByName(type === 'Maker' ? MAKERS : LOCATIONS);
+  var out = { type: type, name: name, email: '', phone: '', address: '' };
+  if (!sh) return out;
+  var rows = sh.getRange(2, 1, LIST_ROWS - 1, 6).getDisplayValues();
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]).trim() === name) {
+      var r = rows[i];
+      if (type === 'Maker') { out.email = r[2]; out.phone = r[3]; out.address = r[4]; }
+      else { out.email = r[3]; out.phone = r[4]; out.address = r[5]; }
+      break;
+    }
+  }
+  return out;
+}
+
+function listBlock_(sh, firstRow, cols, maxRows) {
+  var header = sh.getRange(firstRow - 1, 1, 1, cols).getDisplayValues()[0];
+  var all = sh.getRange(firstRow, 1, maxRows, cols).getDisplayValues();
+  var rows = [];
+  for (var i = 0; i < all.length; i++) { if (String(all[i][0]).trim() === '') break; rows.push(all[i]); }
+  return { header: header, rows: rows };
+}
+
+/**
+ * Sets the report tab to the chosen month / maker / venue, then returns what it shows,
+ * ready to draw as a clean printable page (no help notes).
+ */
+function getReportData(kind, sel) {
+  if (!REPORT_SHEETS[kind]) throw new Error('Unknown report.');
+  sel = sel || {};
+  var ss = SpreadsheetApp.getActive();
+  var sh = ss.getSheetByName(REPORT_SHEETS[kind]);
+  if (!sh) throw new Error('The "' + REPORT_SHEETS[kind] + '" tab is missing.');
+  var generated = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'd MMMM yyyy');
+
+  if (kind === 'monthly') {
+    setIfChanged_(sh.getRange('B3'), sel.month);
+  } else {
+    var list = sel.type === 'Venue' ? namesOn_(ss, LOCATIONS) : namesOn_(ss, MAKERS);
+    if (sel.name && list.indexOf(sel.name) < 0) {
+      return { title: kind === 'statement' ? 'Statement' : 'Outstanding payment', period: '', generated: generated,
+               error: 'Please choose a ' + String(sel.type || 'maker').toLowerCase() + ' from the list.' };
+    }
+    setIfChanged_(sh.getRange('B4'), sel.type);
+    setIfChanged_(sh.getRange('B5'), sel.name);
+    if (kind === 'statement') setIfChanged_(sh.getRange('B6'), sel.month);
+  }
+  SpreadsheetApp.flush();
+  Utilities.sleep(500);            // give the formulas a moment to recalculate
+  SpreadsheetApp.flush();
+
+  if (kind === 'monthly') {
+    var table = function (col, width) {
+      var header = sh.getRange(17, col, 1, width).getDisplayValues()[0];
+      var total = sh.getRange(18, col, 1, width).getDisplayValues()[0];
+      var rows = sh.getRange(19, col, 100, width).getDisplayValues().filter(function (r) {
+        return String(r[0]).trim() !== '' && String(r[1]).trim() !== '0';
+      });
+      return { header: header, total: total, rows: rows };
+    };
+    return {
+      title: 'Monthly selling report', period: sh.getRange('B3').getDisplayValue(), generated: generated,
+      totals: sh.getRange('A8:B15').getDisplayValues().filter(function (r) { return r[0] && String(r[0]).indexOf('Difference') !== 0; }),
+      makers: table(1, 6), venues: table(8, 4)
+    };
+  }
+
+  var lists = ss.getSheetByName(LISTS_SHEET);
+  var ready = lists ? String(lists.getRange(kind === 'statement' ? 'H2' : 'I2').getDisplayValue()) === 'TRUE' : true;
+  var type = sh.getRange('B4').getDisplayValue(), name = sh.getRange('B5').getDisplayValue();
+  if (!ready) {
+    return { title: kind === 'statement' ? 'Statement' : 'Outstanding payment', period: '', generated: generated,
+             error: 'Please choose a ' + type.toLowerCase() + ' from the list.' };
+  }
+  var who = whoFor_(ss, type, name);
+
+  if (kind === 'statement') {
+    var blk = listBlock_(sh, 18, 7, 300);
+    var none = blk.rows.length === 1 && String(blk.rows[0][0]).indexOf('No items sold') === 0;
+    return {
+      title: 'Statement', period: sh.getRange('B6').getDisplayValue(), generated: generated, who: who,
+      summary: sh.getRange('A10:B15').getDisplayValues().filter(function (r) { return r[0]; }),
+      items: { header: blk.header, rows: none ? [] : blk.rows, message: 'No items sold in this month.' }
+    };
+  }
+
+  var blk2 = listBlock_(sh, 14, 5, 300);
+  var nothing = blk2.rows.length === 1 && String(blk2.rows[0][0]).indexOf('Nothing outstanding') === 0;
+  return {
+    title: 'Outstanding payment', period: '', generated: generated, who: who,
+    amount: sh.getRange('B7').getDisplayValue(), count: sh.getRange('B8').getDisplayValue(),
+    items: { header: blk2.header, rows: nothing ? [] : blk2.rows, message: 'Nothing is outstanding.' }
+  };
 }
 
 // ---- Labels ----------------------------------------------------------------
