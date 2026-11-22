@@ -99,8 +99,27 @@ Each row without a link gets one, and the script writes back the link URL, and s
 
 **Do a test print of one label and scan it with a phone before printing a whole batch.** A good scan on a printed label is the real check that the QR code works.
 
-### When an item sells
-Set **Status** to *Sold* (this also stamps the sold date) and run **3. Switch off links for sold items**. This deletes the Square link, so a second person scanning an old label cannot pay for an item that is gone. Then take the label out of the cabinet.
+### When an item sells: sync from Square
+Run **Craft Hereford ▸ 3. Sync sales from Square** (as often as you like; once a day or before a report is plenty). It reads your recent Square payments and, for each completed payment:
+- finds the item by the code in the payment note (or the order's item name);
+- sets its **Status** to *Sold*, its **Sold date** to the payment date, and freezes the venue commission rate;
+- records the **Square payment ID** and the **Square fee** on the row;
+- switches off that item's Square link, so nobody can pay for it twice.
+
+It is safe to run repeatedly: items already synced are left alone. The first run looks back 90 days; later runs look back from the last sync (with a day of overlap). Reconnecting to Square starts a fresh history.
+
+Things it flags instead of guessing (also written to the **Sync note** column on the row, and shown in the pop-up):
+- **Paid twice:** a second, different payment for an item already paid for.
+- **Refunded:** the payment was refunded in Square. The sheet does not change the sale; decide whether to reset the status and don't pay the maker until it's sorted.
+- **Price mismatch:** the amount paid differs from the price on the sheet.
+- **Date gap:** the item had been marked *Sold* by hand on a different date from the payment.
+- **Not matched:** payments with no item code (for example sales taken in person on Square) or a code that isn't on the Products tab. These are listed in the pop-up and left alone.
+
+You can still mark items *Sold* by hand (for example a cash sale). **4. Switch off links for sold items** switches off the links of any *Sold* item that still has one.
+
+The Monthly report adds **Square fees on synced sales** and **Craft Hereford commission after Square fees**, so you can see whether the selling commission covers the fees. Fees are only known for items that have been synced.
+
+**Cross-check:** a month's sales in Square's own reports should equal Total sales on the Monthly report (before fees), provided every sale was a sheet link and has been synced.
 
 ## Reports and payments
 

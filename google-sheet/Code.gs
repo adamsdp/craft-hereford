@@ -21,13 +21,15 @@ var HEADERS = [
   'Item code', 'Product description', 'Maker', 'Location', 'Price (GBP)',
   'Venue commission %', 'Selling commission %', 'Status',
   'Square link URL', 'Square link ID', 'Date listed', 'Sold date',
-  'Venue commission (GBP)', 'Craft Hereford commission (GBP)', 'Maker receives (GBP)', 'Maker paid?', 'Venue paid?'
+  'Venue commission (GBP)', 'Craft Hereford commission (GBP)', 'Maker receives (GBP)', 'Maker paid?', 'Venue paid?',
+  'Square payment ID', 'Square fee (GBP)', 'Sync note'
 ];
 var COL = {
   CODE: 1, DESC: 2, MAKER: 3, LOCATION: 4, PRICE: 5,
   VENUE_PCT: 6, SELL_PCT: 7, STATUS: 8,
   URL: 9, LINK_ID: 10, LISTED: 11, SOLD: 12,
-  VENUE_GBP: 13, SELL_GBP: 14, MAKER_GBP: 15, PAID: 16, VENUE_PAID: 17
+  VENUE_GBP: 13, SELL_GBP: 14, MAKER_GBP: 15, PAID: 16, VENUE_PAID: 17,
+  SQ_PAYMENT: 18, SQ_FEE: 19, SYNC_NOTE: 20
 };
 var MAKER_HEADERS = ['Name', 'Code', 'Email', 'Phone', 'Address', 'Outstanding (GBP)', 'Payment due?'];
 var LOCATION_HEADERS = ['Name', 'Venue commission %', 'Code', 'Email', 'Phone', 'Address', 'Outstanding (GBP)', 'Payment due?'];
@@ -42,7 +44,8 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('Craft Hereford')
     .addItem('1. Create Square links for new rows', 'createLinks')
     .addItem('2. Print labels...', 'showLabelDialog')
-    .addItem('3. Switch off links for sold items', 'disableSoldLinks')
+    .addItem('3. Sync sales from Square', 'syncSales')
+    .addItem('4. Switch off links for sold items', 'disableSoldLinks')
     .addSeparator()
     .addItem('Set up sheet (first time)', 'setupSheet')
     .addItem('Connect to Square...', 'connectSquare')
@@ -204,13 +207,14 @@ function setupProducts_(sh, makers, locations, settings) {
   sh.getRange(2, COL.PRICE, n, 1).setNumberFormat('"£"0.00');
   sh.getRange(2, COL.VENUE_PCT, n, 2).setNumberFormat('0.0%');
   sh.getRange(2, COL.VENUE_GBP, n, 3).setNumberFormat('"£"0.00');
+  sh.getRange(2, COL.SQ_FEE, n, 1).setNumberFormat('"£"0.00');
   sh.getRange(2, COL.LISTED, n, 2).setNumberFormat('dd mmm yyyy');
   sh.getRange(2, COL.VENUE_PCT, n, 1).setFontColor('#555555');          // set by the location
   sh.getRange(2, COL.LINK_ID, n, 1).setFontColor('#888888');
   sh.getRange(2, COL.VENUE_GBP, n, 3).setBackground('#f3f3f3');         // calculated
   sh.getRange(1, COL.VENUE_GBP, 1, 3).setBackground('#e0e0e0');
 
-  var widths = [90, 260, 150, 150, 90, 110, 110, 80, 220, 130, 100, 100, 120, 140, 120, 90, 90];
+  var widths = [90, 260, 150, 150, 90, 110, 110, 80, 220, 130, 100, 100, 120, 140, 120, 90, 90, 190, 100, 300];
   widths.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
 }
 
@@ -334,6 +338,7 @@ function connectSquare() {
   }
 
   props.setProperties({ SQUARE_ENV: envText, SQUARE_TOKEN: tokenText, SQUARE_LOCATION: chosen.id });
+  props.deleteProperty('SQUARE_LAST_SYNC');   // a new connection starts its own sync history
   ui.alert('Connected to Square (' + envText + ').\nLocation: ' + (chosen.name || chosen.id) +
     (chosen.currency ? ' (' + chosen.currency + ')' : '') + '.');
 }
@@ -501,11 +506,16 @@ function disableSoldLinks() {
   var ui = SpreadsheetApp.getUi();
   var cfg = squareConfig_();
   var sh = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
-  var last = sh.getLastRow();
-  if (last < 2) return;
-  var data = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  var r = switchOffSoldLinks_(sh, cfg);
+  ui.alert(r.done + ' link(s) switched off.' + (r.problems.length ? '\n\n' + r.problems.join('\n') : ''));
+}
 
-  var done = 0, problems = [];
+/** Deletes the Square link of every Sold item that still has one. Returns {done, problems}. */
+function switchOffSoldLinks_(sh, cfg) {
+  var out = { done: 0, problems: [] };
+  var last = sh.getLastRow();
+  if (last < 2) return out;
+  var data = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
   data.forEach(function (r, i) {
     if (r[COL.STATUS - 1] !== 'Sold' || !r[COL.LINK_ID - 1]) return;
     var res = UrlFetchApp.fetch(cfg.base + '/v2/online-checkout/payment-links/' + r[COL.LINK_ID - 1], {
@@ -518,12 +528,180 @@ function disableSoldLinks() {
       sh.getRange(i + 2, COL.LINK_ID).setValue('');
       sh.getRange(i + 2, COL.URL).setValue('(switched off)');
       if (!r[COL.SOLD - 1]) sh.getRange(i + 2, COL.SOLD).setValue(new Date());
-      done++;
+      out.done++;
     } else {
-      problems.push('Row ' + (i + 2) + ': HTTP ' + res.getResponseCode());
+      out.problems.push('Row ' + (i + 2) + ': HTTP ' + res.getResponseCode());
     }
   });
-  ui.alert(done + ' link(s) switched off.' + (problems.length ? '\n\n' + problems.join('\n') : ''));
+  return out;
+}
+
+// ---- Sync sales from Square ------------------------------------------------
+var SYNC_FIRST_LOOKBACK_DAYS = 90;
+var DAY_MS = 24 * 3600 * 1000;
+
+/** Finds an item code such as HCH-AJ-001 in a payment note or an order line name. */
+function codeFromText_(text) {
+  var m = String(text || '').match(/\b([A-Z0-9]{1,8}-[A-Z0-9]{1,8}-\d{3,})\b/);
+  return m ? m[1] : '';
+}
+
+function pounds_(pence) { return '£' + (pence / 100).toFixed(2); }
+
+function sumFees_(p) {
+  return (p.processing_fee || []).reduce(function (t, f) {
+    return t + ((f.amount_money && f.amount_money.amount) || 0);
+  }, 0);
+}
+
+function squareGet_(cfg, path) {
+  var res = UrlFetchApp.fetch(cfg.base + path, {
+    headers: { Authorization: 'Bearer ' + cfg.token, 'Square-Version': SQUARE_VERSION },
+    muteHttpExceptions: true
+  });
+  var json = {};
+  try { json = JSON.parse(res.getContentText() || '{}'); } catch (e) { json = {}; }
+  if (res.getResponseCode() >= 300) {
+    var why = json.errors && json.errors[0] ? (json.errors[0].detail || json.errors[0].code) : 'HTTP ' + res.getResponseCode();
+    throw new Error(why);
+  }
+  return json;
+}
+
+/** All payments at this location between two dates, oldest first. */
+function fetchPayments_(cfg, begin, end) {
+  var out = [], cursor = '';
+  do {
+    var json = squareGet_(cfg, '/v2/payments?sort_order=ASC&limit=100' +
+      '&location_id=' + encodeURIComponent(cfg.location) +
+      '&begin_time=' + encodeURIComponent(begin.toISOString()) +
+      '&end_time=' + encodeURIComponent(end.toISOString()) +
+      (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''));
+    out = out.concat(json.payments || []);
+    cursor = json.cursor || '';
+  } while (cursor);
+  return out;
+}
+
+/** Item names on an order, used when a payment has no note. */
+function fetchOrderText_(cfg, orderId) {
+  var json = squareGet_(cfg, '/v2/orders/' + encodeURIComponent(orderId));
+  var items = (json.order && json.order.line_items) || [];
+  return items.map(function (l) { return l.name; }).join(' ');
+}
+
+/**
+ * Applies Square payments to the Products tab. Returns
+ * {newlySold, alreadyDone, flagged, unmatched}. Safe to run repeatedly.
+ */
+function applyPayments_(sh, payments, orderText) {
+  var res = { newlySold: [], alreadyDone: 0, flagged: [], unmatched: [] };
+  var last = sh.getLastRow();
+  if (last < 2) return res;
+  var data = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  var byCode = {};
+  data.forEach(function (r, i) {
+    var c = String(r[COL.CODE - 1]).trim();
+    if (c && byCode[c] === undefined) byCode[c] = i;
+  });
+
+  payments.forEach(function (p) {
+    if (p.status !== 'COMPLETED') return;
+    var paid = (p.amount_money && p.amount_money.amount) || 0;
+    var code = codeFromText_(p.note);
+    if (!code && p.order_id && orderText) {
+      try { code = codeFromText_(orderText(p.order_id)); } catch (e) { code = ''; }
+    }
+    if (!code) { res.unmatched.push(pounds_(paid) + ' payment ' + p.id + ' (no item code: not from a sheet link)'); return; }
+    var i = byCode[code];
+    if (i === undefined) { res.unmatched.push(code + ' (not on the Products tab)'); return; }
+
+    var r = data[i], rowNum = i + 2;
+    var when = new Date(p.created_at);
+    var existing = String(r[COL.SQ_PAYMENT - 1]).trim();
+    var oldNote = String(r[COL.SYNC_NOTE - 1]).trim();
+
+    // A second, different payment for an item that was already paid for.
+    if (existing && existing !== p.id) {
+      var twice = 'Paid twice in Square: ' + p.id + ' (' + pounds_(paid) + ')';
+      if (oldNote.indexOf(twice) < 0) {
+        sh.getRange(rowNum, COL.SYNC_NOTE).setValue((oldNote ? oldNote + '; ' : '') + twice);
+        res.flagged.push(code + ': ' + twice);
+      }
+      return;
+    }
+
+    var notes = [], changed = false;
+    if (!existing) {
+      if (r[COL.STATUS - 1] === 'Sold') {
+        // Marked sold by hand earlier: keep that, but point out a big date gap.
+        var hand = r[COL.SOLD - 1] ? new Date(r[COL.SOLD - 1]) : null;
+        if (hand && isFinite(hand) && Math.abs(hand - when) > 2 * DAY_MS) {
+          notes.push('Marked sold ' + hand.toISOString().slice(0, 10) + ' but paid ' + when.toISOString().slice(0, 10));
+        }
+      } else {
+        sh.getRange(rowNum, COL.STATUS).setValue('Sold');
+        sh.getRange(rowNum, COL.SOLD).setValue(when);
+        var venue = sh.getRange(rowNum, COL.VENUE_PCT);          // freeze the venue rate, as marking Sold by hand does
+        if (venue.getFormula()) venue.setValue(venue.getValue());
+        res.newlySold.push(code);
+        data[i][COL.STATUS - 1] = 'Sold';
+      }
+      sh.getRange(rowNum, COL.SQ_PAYMENT).setValue(p.id);
+      sh.getRange(rowNum, COL.SQ_FEE).setValue(sumFees_(p) / 100);
+      data[i][COL.SQ_PAYMENT - 1] = p.id;
+      changed = true;
+    }
+
+    // Checks that apply every time: price and refunds.
+    var price = toPence(r[COL.PRICE - 1]);
+    if (price && paid !== price) notes.push('Paid ' + pounds_(paid) + ' but price is ' + pounds_(price));
+    var refunded = (p.refunded_money && p.refunded_money.amount) || 0;
+    if (refunded > 0) notes.push('Refunded ' + pounds_(refunded) + ' in Square: review this sale');
+    notes = notes.filter(function (n) { return oldNote.indexOf(n) < 0; });
+    if (notes.length) {
+      sh.getRange(rowNum, COL.SYNC_NOTE).setValue((oldNote ? oldNote + '; ' : '') + notes.join('; '));
+      res.flagged.push(code + ': ' + notes.join('; '));
+      changed = true;
+    }
+    if (!changed) res.alreadyDone++;
+  });
+  return res;
+}
+
+function listShort_(items, max) {
+  var shown = items.slice(0, max).join('\n  ');
+  return '\n  ' + shown + (items.length > max ? '\n  ...and ' + (items.length - max) + ' more' : '');
+}
+
+function syncSales() {
+  var ui = SpreadsheetApp.getUi();
+  var cfg = squareConfig_();
+  var sh = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
+  if (!sh) { ui.alert('Run Craft Hereford > Set up sheet first.'); return; }
+  var props = PropertiesService.getScriptProperties();
+
+  var now = new Date();
+  var lastSync = props.getProperty('SQUARE_LAST_SYNC');
+  var begin = lastSync ? new Date(new Date(lastSync).getTime() - DAY_MS)       // a day of overlap; repeats are harmless
+                       : new Date(now.getTime() - SYNC_FIRST_LOOKBACK_DAYS * DAY_MS);
+
+  var payments;
+  try { payments = fetchPayments_(cfg, begin, now); }
+  catch (e) { ui.alert('Could not read payments from Square.\n\n' + e.message); return; }
+
+  var res = applyPayments_(sh, payments, function (id) { return fetchOrderText_(cfg, id); });
+  var off = switchOffSoldLinks_(sh, cfg);
+  props.setProperty('SQUARE_LAST_SYNC', now.toISOString());
+
+  var msg = 'Synced with Square (' + cfg.env + '), payments since ' + begin.toISOString().slice(0, 10) + '.\n\n' +
+    '• ' + res.newlySold.length + ' item(s) newly marked Sold' + (res.newlySold.length ? ':' + listShort_(res.newlySold, 10) : '') + '\n' +
+    '• ' + res.alreadyDone + ' already up to date\n' +
+    '• ' + off.done + ' link(s) switched off';
+  if (off.problems.length) msg += '\n  (could not switch off: ' + off.problems.join('; ') + ')';
+  if (res.flagged.length) msg += '\n\nNeeds your attention (also in the Sync note column):' + listShort_(res.flagged, 10);
+  if (res.unmatched.length) msg += '\n\nPayments not matched to an item:' + listShort_(res.unmatched, 10);
+  ui.alert(msg);
 }
 
 // ---- Labels ----------------------------------------------------------------
