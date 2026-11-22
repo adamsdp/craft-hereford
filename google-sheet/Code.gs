@@ -290,20 +290,52 @@ function connectSquare() {
   if (envText !== 'sandbox' && envText !== 'live') { ui.alert('Please type sandbox or live.'); return; }
 
   var token = ui.prompt('Square access token',
-    'Paste the access token from the Square Developer Dashboard (matching the environment above).',
+    'Paste the ' + envText + ' access token from the Square Developer Dashboard. ' +
+    'Use the Sandbox token for "sandbox" and the Production token for "live".',
     ui.ButtonSet.OK_CANCEL);
   if (token.getSelectedButton() !== ui.Button.OK) return;
+  var tokenText = token.getResponseText().trim();
 
-  var loc = ui.prompt('Square location ID',
-    'Paste your Location ID (Developer Dashboard -> Locations).', ui.ButtonSet.OK_CANCEL);
-  if (loc.getSelectedButton() !== ui.Button.OK) return;
-
-  props.setProperties({
-    SQUARE_ENV: envText,
-    SQUARE_TOKEN: token.getResponseText().trim(),
-    SQUARE_LOCATION: loc.getResponseText().trim()
+  // Check the token and find the Square location(s) it can use.
+  var base = envText === 'live' ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com';
+  var res = UrlFetchApp.fetch(base + '/v2/locations', {
+    headers: { Authorization: 'Bearer ' + tokenText, 'Square-Version': SQUARE_VERSION },
+    muteHttpExceptions: true
   });
-  ui.alert('Saved. Environment: ' + envText + '.');
+  var json = {};
+  try { json = JSON.parse(res.getContentText() || '{}'); } catch (e) { json = {}; }
+  if (res.getResponseCode() >= 300 || !json.locations) {
+    var why = json.errors && json.errors[0] ? (json.errors[0].detail || json.errors[0].code) : 'HTTP ' + res.getResponseCode();
+    ui.alert('Square did not accept that token (' + why + ').\n\n' +
+      'Check that you copied the ' + envText + ' access token, with no spaces, and that you typed the matching environment.');
+    return;
+  }
+  var locs = json.locations.filter(function (l) { return !l.status || l.status === 'ACTIVE'; });
+  if (!locs.length) { ui.alert('That Square account has no active locations.'); return; }
+
+  var chosen = locs[0];
+  if (locs.length > 1) {
+    var list = locs.map(function (l, i) {
+      return (i + 1) + '. ' + (l.name || l.id) + ' (' + (l.country || '?') + ', ' + (l.currency || '?') + ')';
+    }).join('\n');
+    var pick = ui.prompt('Which Square location?', 'Type the number:\n\n' + list, ui.ButtonSet.OK_CANCEL);
+    if (pick.getSelectedButton() !== ui.Button.OK) return;
+    var n = parseInt(pick.getResponseText().trim(), 10);
+    if (!(n >= 1 && n <= locs.length)) { ui.alert('Please type one of the numbers listed.'); return; }
+    chosen = locs[n - 1];
+  }
+
+  if (chosen.currency && chosen.currency !== CURRENCY) {
+    var go = ui.alert('Currency mismatch',
+      'This location takes payments in ' + chosen.currency + ', but this sheet creates links in ' + CURRENCY + '. ' +
+      'Square may refuse them. (For testing, create a UK sandbox test account in the Developer Dashboard and use its token.)\n\nSave this connection anyway?',
+      ui.ButtonSet.YES_NO);
+    if (go !== ui.Button.YES) return;
+  }
+
+  props.setProperties({ SQUARE_ENV: envText, SQUARE_TOKEN: tokenText, SQUARE_LOCATION: chosen.id });
+  ui.alert('Connected to Square (' + envText + ').\nLocation: ' + (chosen.name || chosen.id) +
+    (chosen.currency ? ' (' + chosen.currency + ')' : '') + '.');
 }
 
 function squareConfig_() {

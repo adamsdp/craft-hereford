@@ -29,9 +29,8 @@ The Square access token is kept in the script's private properties, not in any c
 1. Create a Square account at [squareup.com/gb](https://squareup.com/gb) and finish verification and bank details.
 2. Go to the [Square Developer Dashboard](https://developer.squareup.com/apps), sign in, and **create an application** (name it e.g. "Craft Hereford sheet").
 3. Open the app and note, for **Sandbox** first:
-   - the **Sandbox access token** (Credentials tab), and
-   - the **Location ID** (Locations tab, make sure *Sandbox* is selected).
-4. Later, for real payments, repeat with **Production**: the Production access token and your real Location ID.
+   - the **Sandbox access token** (Credentials tab). You don't need the Application ID or the Location ID: the sheet finds your location itself.
+4. Later, for real payments, repeat with **Production**: the Production access token.
 
 Start in sandbox: links work with Square's test cards and no real money moves.
 
@@ -42,7 +41,7 @@ Start in sandbox: links work with Square's test cards and no real money moves.
 3. Click **+ → HTML**, name it exactly `Labels`, and paste in the contents of `Labels.html`.
 4. **Save**, close the Apps Script tab, and **reload the Sheet**. A **Craft Hereford** menu appears.
 5. **Craft Hereford → Set up sheet (first time)**. This builds the four tabs (Products, Makers, Locations, Settings), the dropdowns and the commission formulas. Google asks you to authorise the script; this is normal, as it's your own script. If you see "Google hasn't verified this app", choose **Advanced → Go to … (unsafe)**.
-6. **Craft Hereford → Connect to Square…** and enter `sandbox`, the sandbox access token, then the location ID.
+6. **Craft Hereford → Connect to Square…** and enter `sandbox`, then the sandbox access token. The sheet checks the token with Square and finds your location (if there are several it asks which). If the location doesn't take GBP payments it warns you.
 
 > Anyone with **edit** access to the Sheet can open the script and read the token. Share edit access only with volunteers you trust; give everyone else "view" or "comment".
 
@@ -148,7 +147,7 @@ The **Lists** tab holds the calculated lists behind the dropdowns. There is noth
 
 ## Going live
 
-When your sandbox test works end to end: run **Connect to Square…** again, enter `live`, the Production access token and your real Location ID, and create links for your real products. Links made in sandbox won't work in the live account, so delete the test rows first.
+When your sandbox test works end to end: run **Connect to Square…** again, enter `live` and the Production access token, and create links for your real products. Links made in sandbox won't work in the live account, so delete the test rows first.
 
 ## Things to check
 
