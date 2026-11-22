@@ -39,6 +39,11 @@ var SET_VENUE_DEFAULT = 'B2';
 var SET_SELL_DEFAULT = 'B3';
 var SET_CHOICES_FIRST_ROW = 6;   // selling-commission choices are listed from A6 down
 
+/** Saves pending changes to the sheet now, so they are visible even while a pop-up is open. */
+function flush_() {
+  if (typeof SpreadsheetApp.flush === 'function') SpreadsheetApp.flush();
+}
+
 // ---- Menu ------------------------------------------------------------------
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Craft Hereford')
@@ -499,6 +504,7 @@ function createLinks() {
 
   var summary = made + ' link(s) created in ' + cfg.env + ' mode.';
   if (problems.length) summary += '\n\nSkipped:\n' + problems.join('\n');
+  flush_();
   ui.alert(summary);
 }
 
@@ -508,6 +514,7 @@ function disableSoldLinks() {
   var cfg = squareConfig_();
   var sh = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
   var r = switchOffSoldLinks_(sh, cfg);
+  flush_();
   ui.alert(r.done + ' link(s) switched off.' + (r.problems.length ? '\n\n' + r.problems.join('\n') : ''));
 }
 
@@ -712,6 +719,7 @@ function syncSales() {
       'in the same Square environment (' + cfg.env + ') and at the same location, and that it appears in the Square ' +
       cfg.env + ' dashboard under Payments. New payments can take a minute to show up.';
   }
+  flush_();
   ui.alert(msg);
 }
 
