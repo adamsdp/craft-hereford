@@ -119,6 +119,8 @@ You can still mark items *Sold* by hand (for example a cash sale). **4. Switch o
 
 The Monthly report adds **Square fees on synced sales** and **Craft Hereford commission after Square fees**, so you can see whether the selling commission covers the fees. Fees are only known for items that have been synced.
 
+**If the sync finds nothing or something looks wrong,** run **Craft Hereford ▸ Check Square connection**. It lists what Square can see for your token: the location in use, how many payment links and orders exist, and how many payments there are at each location. A payment that exists under a different location, or an order with no payment, shows up straight away.
+
 **Cross-check:** a month's sales in Square's own reports should equal Total sales on the Monthly report (before fees), provided every sale was a sheet link and has been synced.
 
 ## Reports and payments

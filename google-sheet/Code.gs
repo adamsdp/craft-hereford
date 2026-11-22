@@ -49,6 +49,7 @@ function onOpen() {
     .addSeparator()
     .addItem('Set up sheet (first time)', 'setupSheet')
     .addItem('Connect to Square...', 'connectSquare')
+    .addItem('Check Square connection', 'checkSquare')
     .addToUi();
 }
 
@@ -712,6 +713,72 @@ function syncSales() {
       cfg.env + ' dashboard under Payments. New payments can take a minute to show up.';
   }
   ui.alert(msg);
+}
+
+// ---- Check Square connection ------------------------------------------------
+function squarePost_(cfg, path, body) {
+  var res = UrlFetchApp.fetch(cfg.base + path, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + cfg.token, 'Square-Version': SQUARE_VERSION },
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true
+  });
+  var json = {};
+  try { json = JSON.parse(res.getContentText() || '{}'); } catch (e) { json = {}; }
+  if (res.getResponseCode() >= 300) {
+    var why = json.errors && json.errors[0] ? (json.errors[0].detail || json.errors[0].code) : 'HTTP ' + res.getResponseCode();
+    throw new Error(why);
+  }
+  return json;
+}
+
+function statusSummary_(items) {
+  var by = {};
+  items.forEach(function (x) { var k = String(x.status || x.state || '?').toLowerCase(); by[k] = (by[k] || 0) + 1; });
+  var parts = Object.keys(by).map(function (k) { return by[k] + ' ' + k; });
+  return parts.length ? ' (' + parts.join(', ') + ')' : '';
+}
+
+/** Reports what Square can see for this connection, to find out why something is missing. */
+function checkSquare() {
+  var ui = SpreadsheetApp.getUi();
+  var cfg = squareConfig_();
+  var since = new Date(Date.now() - 90 * DAY_MS), now = new Date();
+  var lines = ['Environment: ' + cfg.env, 'Location ID in use: ' + cfg.location, ''];
+  var locs = [];
+
+  try {
+    locs = squareGet_(cfg, '/v2/locations').locations || [];
+    var mine = locs.filter(function (l) { return l.id === cfg.location; })[0];
+    lines.push('Token works. Locations on this account: ' + locs.length);
+    lines.push('Location in use: ' + (mine ? (mine.name || mine.id) + ' (' + (mine.country || '?') + ', ' + (mine.currency || '?') + ')'
+                                           : 'NOT FOUND for this token. Run Connect to Square again.'));
+  } catch (e) { lines.push('Could not read locations: ' + e.message); }
+
+  try {
+    var links = squareGet_(cfg, '/v2/online-checkout/payment-links?limit=100');
+    lines.push('Payment links on this account: ' + (links.payment_links || []).length + (links.cursor ? '+' : ''));
+  } catch (e) { lines.push('Could not read payment links: ' + e.message); }
+
+  try {
+    var orders = squarePost_(cfg, '/v2/orders/search', {
+      location_ids: [cfg.location], limit: 100,
+      query: { filter: { date_time_filter: { created_at: { start_at: since.toISOString() } } },
+               sort: { sort_field: 'CREATED_AT', sort_order: 'DESC' } }
+    }).orders || [];
+    var paid = orders.filter(function (o) { return (o.tenders || []).length > 0; }).length;
+    lines.push('Orders at this location, last 90 days: ' + orders.length + statusSummary_(orders) + ' (' + paid + ' with a payment)');
+  } catch (e) { lines.push('Could not read orders: ' + e.message); }
+
+  var shown = locs.length ? locs.slice(0, 10) : [{ id: cfg.location, name: cfg.location }];
+  shown.forEach(function (l) {
+    try {
+      var ps = fetchPayments_({ base: cfg.base, token: cfg.token, location: l.id }, since, now);
+      lines.push('Payments at ' + (l.name || l.id) + (l.id === cfg.location ? ' (in use)' : '') + ', last 90 days: ' + ps.length + statusSummary_(ps));
+    } catch (e) { lines.push('Could not read payments at ' + (l.name || l.id) + ': ' + e.message); }
+  });
+  ui.alert(lines.join('\n'));
 }
 
 // ---- Labels ----------------------------------------------------------------
