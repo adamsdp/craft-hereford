@@ -24,9 +24,10 @@ The **Craft Hereford** menu runs the everyday jobs in the order they happen:
 | **2. Print tags** | To print the tags for those items on A4 card. |
 | **3. Update sold items from Square** | Once a day, or before looking at a report. Marks sold items and switches off their links. |
 | **Print reports** | The monthly report, a statement for one maker or venue, or what is outstanding for one maker or venue: branded A4 pages. |
+| **Mark outstanding items as paid** | After paying a maker or venue. Ticks the paid box for every item shown on the Outstanding payments tab. It shows who and how much and asks you to confirm first. |
 | **Setup and checks (admin)** | Connecting to Square and checking the connection. Not needed day to day. |
 
-The tabs are colour-coded: **green** tabs are where you type things in (Products, Makers, Locations), **blue** tabs are reports, and **grey** is settings. On the Products, Makers and Locations tabs a **green heading** means "you fill this in" and a **grey heading** means "it fills in by itself". Hover over any heading for a short note. The technical Square columns are tucked behind a small **+** on the Products tab. If someone starts to type over an automatic column, Google Sheets warns them first.
+The tabs are colour-coded: **green** tabs are where you type things in (Products, Makers, Locations), **blue** tabs are reports, and **grey** is settings. On the Products, Makers and Locations tabs a **green heading** and **light green cells** mean "you fill this in", and a **grey heading** means "it fills in by itself". Hover over any heading for a short note. The technical Square columns are tucked behind a small **+** on the Products tab. If someone starts to type over an automatic column, Google Sheets warns them first.
 
 ## How it fits together
 
@@ -194,6 +195,10 @@ You get the totals for the month and every item sold, in date order, with a Paid
 
 ### Outstanding payments
 Also one at a time: choose *Maker* or *Venue*, then a name. It shows the amount Craft Hereford still owes them, how many items that covers, their email, phone and address, and each unpaid item.
+
+**Marking items as paid.** Once you have paid the maker or venue shown on the Outstanding payments tab, click the green **Mark as paid** button on that tab, or use **Craft Hereford ▸ Mark outstanding items as paid**. A box shows the name, the number of items and the amount and asks "Mark as paid?". If you say yes, the script ticks **Maker paid?** (or **Venue paid?**) on the Products tab for every item listed, and the tab then shows what is left. It only ticks items that are Sold and belong to that person, and anything it can't match is listed in the message. To undo it, untick the boxes on the Products tab.
+
+The button is a Google Sheets drawing assigned to the script. You add it once (the steps are on the **Start here** tab, under Admin): **Insert ▸ Drawing**, draw a green rounded rectangle with "Mark as paid" in it, then click the button, the three dots, **Assign script**, and type `markShownAsPaid`. I can't place it for you because scripts can't create drawings. The menu item does the same thing and works without any setup.
 
 For an overview of everyone owed, use the **Outstanding (GBP)** and **Payment due?** columns on the **Makers** and **Locations** tabs (highlighted amber when *Yes*), or the **Unpaid items** tab, which lists every sold item where the maker or the venue is still unpaid. Tick Maker paid? / Venue paid? on the Products tab to clear an item.
 

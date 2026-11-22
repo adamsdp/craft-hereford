@@ -59,6 +59,7 @@ function onOpen() {
       .addItem('Monthly report', 'showPrintMonthly')
       .addItem('Statement for a maker or venue', 'showPrintStatement')
       .addItem('Outstanding payment for a maker or venue', 'showPrintOutstanding'))
+    .addItem('Mark outstanding items as paid', 'markShownAsPaid')
     .addSeparator()
     .addSubMenu(ui.createMenu('Setup and checks (admin)')
       .addItem('Connect to Square', 'connectSquare')
@@ -215,6 +216,11 @@ function setupProducts_(sh, makers, locations, settings) {
   }
   sh.getRange(2, COL.VENUE_PCT, n, 1).setFormulas(venue);
   sh.getRange(2, COL.VENUE_GBP, n, 3).setFormulas(gbp);
+
+  // Light green on the columns people fill in (headings use a stronger green).
+  [[COL.DESC, 4], [COL.SELL_PCT, 2], [COL.PAID, 2]].forEach(function (c) {
+    sh.getRange(2, c[0], n, c[1]).setBackground('#eef6ea');
+  });
 
   // Tick boxes: has the maker / the venue been paid?
   sh.getRange(2, COL.PAID, n, 2).insertCheckboxes();
@@ -971,6 +977,55 @@ function getReportData(kind, sel) {
     amount: sh.getRange('B7').getDisplayValue(), count: sh.getRange('B8').getDisplayValue(),
     items: { header: blk2.header, rows: nothing ? [] : blk2.rows, message: 'Nothing is outstanding.' }
   };
+}
+
+// ---- Mark as paid ------------------------------------------------------------
+/**
+ * Ticks "Maker paid?" (or "Venue paid?") for every item listed on the Outstanding payments tab,
+ * for the maker or venue chosen there. Asks first, and checks every row belongs to that person.
+ * Used by the menu item and by a button on the tab (assign this function to a drawing).
+ */
+function markShownAsPaid() {
+  var ui = SpreadsheetApp.getUi(), ss = SpreadsheetApp.getActive();
+  var os = ss.getSheetByName(REPORT_SHEETS.outstanding), products = ss.getSheetByName(SHEET_NAME);
+  if (!os || !products) { ui.alert('The Outstanding payments tab or the Products tab is missing.'); return; }
+
+  var lists = ss.getSheetByName(LISTS_SHEET);
+  var ready = lists ? String(lists.getRange('I2').getDisplayValue()) === 'TRUE' : true;
+  var type = os.getRange('B4').getDisplayValue(), name = os.getRange('B5').getDisplayValue();
+  if (!ready) { ui.alert('Please choose a maker or venue on the Outstanding payments tab first.'); return; }
+
+  var blk = listBlock_(os, 14, 5, 300);
+  if (!blk.rows.length || String(blk.rows[0][0]).indexOf('Nothing outstanding') === 0) {
+    ui.alert('Nothing is outstanding for ' + name + '.');
+    return;
+  }
+  var answer = ui.alert('Mark as paid',
+    'Mark ' + blk.rows.length + ' item(s) for ' + name + ' (' + type.toLowerCase() + ') as PAID?\n\n' +
+    'Amount: ' + os.getRange('B7').getDisplayValue() + '\n\n' +
+    'Only do this once the payment has actually been made.', ui.ButtonSet.YES_NO);
+  if (answer !== ui.Button.YES) return;
+
+  var col = type === 'Venue' ? COL.VENUE_PAID : COL.PAID;
+  var whoCol = type === 'Venue' ? COL.LOCATION : COL.MAKER;
+  var last = products.getLastRow();
+  var data = last < 2 ? [] : products.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  var byCode = {};
+  data.forEach(function (r, i) { var c = String(r[COL.CODE - 1]).trim(); if (c && byCode[c] === undefined) byCode[c] = i; });
+
+  var done = 0, skipped = [];
+  blk.rows.forEach(function (r) {
+    var code = String(r[0]).trim(), i = byCode[code];
+    if (i === undefined) { skipped.push(code + ' (not found on the Products tab)'); return; }
+    var row = data[i];
+    if (String(row[whoCol - 1]).trim() !== name || row[COL.STATUS - 1] !== 'Sold') { skipped.push(code + ' (does not match ' + name + ')'); return; }
+    products.getRange(i + 2, col).setValue(true);
+    done++;
+  });
+  flush_();
+  ui.alert(done + ' item(s) marked as paid for ' + name + '.' +
+    (skipped.length ? '\n\nNot changed:\n' + skipped.join('\n') : '') +
+    '\n\nThe Outstanding payments tab now shows what is left.');
 }
 
 // ---- Labels ----------------------------------------------------------------
