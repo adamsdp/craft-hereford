@@ -39,7 +39,9 @@ FOLDERS
 
 08-square-checkout   Logo for the Square payment page (Payment Links > Settings >
                      Branding). Exactly 1280 x 680 px: badge or horizontal.
-                     Also a square icon on white (1500 x 1500) for Square's "Small logo".
+                     Also square logos on white (1500 x 1500) for Square's "Small logo":
+                     stacked (icon above the name, easiest to read on phones),
+                     badge (the round logo), or icon only (no name).
 
 COLOURS
 -------
