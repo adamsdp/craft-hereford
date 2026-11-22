@@ -256,27 +256,70 @@ function settingNumber_(a1, fallback) {
   return typeof v === 'number' ? v : fallback;
 }
 
+/** True once an item has a payment link, a payment, or is Listed/Sold: from then on its code must not change. */
+function isCommitted_(sh, r) {
+  var status = sh.getRange(r, COL.STATUS).getValue();
+  return String(sh.getRange(r, COL.URL).getValue()).trim() !== '' ||
+         String(sh.getRange(r, COL.LINK_ID).getValue()).trim() !== '' ||
+         String(sh.getRange(r, COL.SQ_PAYMENT).getValue()).trim() !== '' ||
+         status === 'Listed' || status === 'Sold';
+}
+
 function productsEdited_(sh, rg) {
   var first = Math.max(rg.getRow(), 2);
   var last = Math.min(rg.getRow() + rg.getNumRows() - 1, MAX_ROWS + 1);
   var sellDefault = settingNumber_(SET_SELL_DEFAULT, 0.10);
   var lookups = null, existing = null;
+  var c1 = rg.getColumn(), c2 = c1 + rg.getNumColumns() - 1;
+  var touchedWho = c1 <= COL.LOCATION && c2 >= COL.MAKER;       // was a Maker or Location cell edited?
   for (var r = first; r <= last; r++) {
     // New product: fill the default selling commission.
     var hasDesc = String(sh.getRange(r, COL.DESC).getValue()).trim() !== '';
     var sell = sh.getRange(r, COL.SELL_PCT);
     if (hasDesc && sell.getValue() === '') sell.setValue(sellDefault);
 
-    // Both maker and location chosen: give the item its code (fixed once set).
+    // The item code follows the chosen maker and location until the payment link is made.
     var codeCell = sh.getRange(r, COL.CODE);
+    var curCode = String(codeCell.getValue()).trim();
     var maker = sh.getRange(r, COL.MAKER).getValue(), loc = sh.getRange(r, COL.LOCATION).getValue();
-    if (String(codeCell.getValue()).trim() === '' && maker !== '' && loc !== '') {
+    var makerName = String(maker).trim(), locName = String(loc).trim();
+    var needLookups = function () {
       if (!lookups) {
         lookups = codeLookups_();
         existing = sh.getRange(2, COL.CODE, MAX_ROWS, 1).getValues().map(function (x) { return x[0]; });
       }
+    };
+
+    if (curCode !== '' && touchedWho) {
+      if (isCommitted_(sh, r)) {
+        // A link (or a sale) already uses this code, so it stays. Say so if the maker or venue no longer matches it.
+        needLookups();
+        var mc0 = lookups.makers[makerName], lc0 = lookups.locations[locName];
+        if (mc0 && lc0 && curCode.indexOf(lc0 + '-' + mc0 + '-') !== 0) {
+          try {
+            SpreadsheetApp.getActive().toast('This item already has a payment link, so its code (' + curCode + ') has not changed. ' +
+              'To change it, delete this item (right-click its row number, then Delete row) and add it again as a new item.',
+              'Item code kept', 12);
+          } catch (e) { /* a message is only a courtesy */ }
+        }
+      } else if (makerName === '' || locName === '') {
+        codeCell.setValue('');                       // maker or venue removed: the code no longer means anything
+        needLookups(); existing[r - 2] = '';
+        curCode = '';
+      } else {
+        needLookups();
+        var mc = lookups.makers[makerName], lc = lookups.locations[locName];
+        if (mc && lc && curCode.indexOf(lc + '-' + mc + '-') !== 0) {
+          existing[r - 2] = '';                      // the old code is being replaced
+          var fresh = itemCodeFor_(lookups, makerName, locName, existing);
+          if (fresh) { codeCell.setValue(fresh); curCode = fresh; }
+        }
+      }
+    }
+    if (curCode === '' && makerName !== '' && locName !== '') {
+      needLookups();
       var newCode = itemCodeFor_(lookups, maker, loc, existing);
-      if (newCode) codeCell.setValue(newCode);
+      if (newCode) { codeCell.setValue(newCode); existing[r - 2] = newCode; }
     }
 
     // Status changes: freeze the venue % when Sold, restore the formula otherwise.

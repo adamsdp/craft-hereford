@@ -100,7 +100,9 @@ HCH-AJ-001
  └───────── location's code (Hereford Coffee House)
 ```
 
-- The code is saved as fixed text. It doesn't change if you sort or delete rows, or later change the maker or location of that row, so a printed tag always matches the sheet and the Square payment.
+- **Until the payment link is made, the code follows the maker and location you pick.** If you picked the wrong one, just change it and the code updates (a new number for that maker and venue). If you remove the maker or location, the code clears.
+- **Once the payment link is made (or the item is Listed or Sold), the code is fixed.** It doesn't change if you sort or delete other rows, or later change the maker or location of that row, so a printed tag always matches the sheet and the Square payment. If you change the maker or location after that, the sheet shows a short message and keeps the code.
+- **If a code needs to change after the payment link has been made, delete the item and add it again.** Right-click the item's row number and choose **Delete row**, then add it again as a new item. Deleting the row does not remove the old payment link from Square, so ask whoever looks after Square to delete that link (Payment Links in the Square Dashboard) so nobody can pay through the old tag.
 - The code appears in the Square payment link name and on the printed tag, so a customer, a café or you can quote it.
 - Two makers (or two locations) can end up with the same code, for example Amanda Jones and Alan Jenkins are both `AJ`. These cells turn red. Type a different code over the formula (`AMJ`) **before** adding their items.
 - This needs the script installed (see setup). Without it, the Item code column stays empty and you'd type codes yourself.
