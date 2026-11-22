@@ -13,6 +13,21 @@ Files (in [`google-sheet/`](../google-sheet/)):
 | `Code.gs` | Adds the **Craft Hereford** menu; talks to Square |
 | `Labels.html` | The tag preview and print window |
 
+## What the volunteers see
+
+The **Craft Hereford** menu runs the everyday jobs in the order they happen:
+
+| Menu item | When to use it |
+|---|---|
+| **How to use this sheet** | Opens the **Start here** tab: the instructions in plain English. |
+| **1. Create payment links for new items** | After adding items on the Products tab. |
+| **2. Print tags** | To print the tags for those items on A4 card. |
+| **3. Update sold items from Square** | Once a day, or before looking at a report. Marks sold items and switches off their links. |
+| **Print reports** | The monthly report, a statement for one maker or venue, or what is outstanding for one maker or venue: branded A4 pages. |
+| **Setup and checks (admin)** | Connecting to Square and checking the connection. Not needed day to day. |
+
+The tabs are colour-coded: **green** tabs are where you type things in (Products, Makers, Locations), **blue** tabs are reports, and **grey** is settings. On the Products, Makers and Locations tabs a **green heading** means "you fill this in" and a **grey heading** means "it fills in by itself". Hover over any heading for a short note. The technical Square columns are tucked behind a small **+** on the Products tab. If someone starts to type over an automatic column, Google Sheets warns them first.
+
 ## How it fits together
 
 ```
@@ -42,8 +57,8 @@ Start in sandbox: links work with Square's test cards and no real money moves.
 2. **Extensions → Apps Script**. Delete the sample code and paste in the contents of `Code.gs`.
 3. Click **+ → HTML**, name it exactly `Labels`, and paste in the contents of `Labels.html`.
 4. **Save**, close the Apps Script tab, and **reload the Sheet**. A **Craft Hereford** menu appears.
-5. **Craft Hereford → Set up sheet (first time)**. This builds the four tabs (Products, Makers, Locations, Settings), the dropdowns and the commission formulas. Google asks you to authorise the script; this is normal, as it's your own script. If you see "Google hasn't verified this app", choose **Advanced → Go to … (unsafe)**.
-6. **Craft Hereford → Connect to Square…** and enter `sandbox`, then the sandbox access token. The sheet checks the token with Square and finds your location (if there are several it asks which). If the location doesn't take GBP payments it warns you.
+5. **Craft Hereford → Setup and checks (admin) → Set up sheet (first time only)**. This builds the four tabs (Products, Makers, Locations, Settings), the dropdowns and the commission formulas. Google asks you to authorise the script; this is normal, as it's your own script. If you see "Google hasn't verified this app", choose **Advanced → Go to … (unsafe)**.
+6. **Craft Hereford → Setup and checks (admin) → Connect to Square** and enter `sandbox`, then the sandbox access token. The sheet checks the token with Square and finds your location (if there are several it asks which). If the location doesn't take GBP payments it warns you.
 
 > Anyone with **edit** access to the Sheet can open the script and read the token. Share edit access only with volunteers you trust; give everyone else "view" or "comment".
 
@@ -90,7 +105,7 @@ HCH-AJ-001
 - This needs the script installed (see setup). Without it, the Item code column stays empty and you'd type codes yourself.
 
 ### Create links
-**Craft Hereford → 1. Create Square links for new rows**.
+**Craft Hereford → 1. Create payment links for new items**.
 Each row without a link gets one, and the script writes back the link URL, and sets Status to *Listed*. Rows with a problem (no price, maker, location or commission rate) are skipped and listed in the message. Items already marked *Sold* never get a link, and rows that already have one are left alone.
 
 ### Print tags
@@ -105,7 +120,7 @@ Each tag shows the description, the maker, the QR code, the price and the item c
 **Do a test print of one sheet on plain paper first**, hold a printed tag against your actual card and punch, and scan it with a phone before printing a whole batch. A good scan is the real check that the QR code works.
 
 ### When an item sells: sync from Square
-Run **Craft Hereford ▸ 3. Sync sales from Square** (as often as you like; once a day or before a report is plenty). It reads your recent Square payments and, for each completed payment:
+Run **Craft Hereford ▸ 3. Update sold items from Square** (as often as you like; once a day or before a report is plenty). It reads your recent Square payments and, for each completed payment:
 - finds the item by the code in the payment note (or the order's item name);
 - sets its **Status** to *Sold*, its **Sold date** to the payment date, and freezes the venue commission rate;
 - records the **Square payment ID** and the **Square fee** on the row;
@@ -120,11 +135,11 @@ Things it flags instead of guessing (also written to the **Sync note** column on
 - **Date gap:** the item had been marked *Sold* by hand on a different date from the payment.
 - **Not matched:** payments with no item code (for example sales taken in person on Square) or a code that isn't on the Products tab. These are listed in the pop-up and left alone.
 
-You can still mark items *Sold* by hand (for example a cash sale). **4. Switch off links for sold items** switches off the links of any *Sold* item that still has one.
+You can still mark items *Sold* by hand (for example a cash sale). Updating from Square (step 3) also switches off the links of any *Sold* item that still has one, so that covers items you marked *Sold* by hand too. The same action is available on its own as **Setup and checks (admin) → Switch off links for sold items**.
 
 The Monthly report adds **Square fees on synced sales** and **Craft Hereford commission after Square fees**, so you can see whether the selling commission covers the fees. Fees are only known for items that have been synced.
 
-**If the sync finds nothing or something looks wrong,** run **Craft Hereford ▸ Check Square connection**. It lists what Square can see for your token: the location in use, how many payment links and orders exist, and how many payments there are at each location. A payment that exists under a different location, or an order with no payment, shows up straight away.
+**If the sync finds nothing or something looks wrong,** run **Craft Hereford ▸ Setup and checks (admin) ▸ Check Square connection**. It lists what Square can see for your token: the location in use, how many payment links and orders exist, and how many payments there are at each location. A payment that exists under a different location, or an order with no payment, shows up straight away.
 
 **Cross-check:** a month's sales in Square's own reports should equal Total sales on the Monthly report (before fees), provided every sale was a sheet link and has been synced.
 
@@ -154,6 +169,13 @@ The report tabs are formulas, so they update by themselves; nothing needs the sc
 - An item counts as sold when its **Status** is *Sold*. Its **Sold date** (stamped automatically, editable) decides which month it appears in.
 - When you pay a maker, tick **Maker paid?** on the Products tab. When you pay a venue its commission, tick **Venue paid?**. Both are tick boxes at the right-hand end of the row.
 
+### Printing reports (branded A4)
+Use **Craft Hereford ▸ Print reports** and choose **Monthly report**, **Statement for a maker or venue** or **Outstanding payment for a maker or venue**. A window opens with dropdowns for the month, and for Maker or Venue and the name, plus a preview of the page. Click **Print**, choose **A4**, and turn **Headers and footers** off.
+
+The printed page has the Craft Hereford logo and colours and a footer, and **none of the help text**. Longer lists carry on to a second page with the headings repeated. Print to PDF if you want to email it.
+
+On the report tabs themselves the help is in hover notes, which don't print either, so printing a tab directly with File ▸ Print is also clean (but without the logo).
+
 ### Monthly report
 Choose a month from the **Month** dropdown (the last 36 months are listed). You get:
 - **Craft Hereford totals:** items sold, total sales, venue commission, Craft Hereford commission and the amount paid or payable to makers. A "Difference" line should read £0.00; if it doesn't, some sold item is missing a maker, location or commission.
@@ -179,7 +201,7 @@ Amounts owed are based on sold items only, from the first sale ever, not just on
 
 The **Lists** tab holds the calculated lists behind the dropdowns. There is nothing to edit there.
 
-> **Setting up a second copy:** *Craft Hereford ▸ Set up sheet* builds the Products, Makers, Locations and Settings tabs, but not the four report tabs. To start another copy with everything, use **File ▸ Make a copy** on the finished sheet, then clear the product rows.
+> **Setting up a second copy:** *Craft Hereford ▸ Setup and checks (admin) ▸ Set up sheet* builds the Products, Makers, Locations and Settings tabs, but not the four report tabs. To start another copy with everything, use **File ▸ Make a copy** on the finished sheet, then clear the product rows.
 
 ## Printing on A4 card: tips
 
@@ -193,7 +215,7 @@ The **Lists** tab holds the calculated lists behind the dropdowns. There is noth
 
 ## Going live
 
-When your sandbox test works end to end: run **Connect to Square…** again, enter `live` and the Production access token, and create links for your real products. Links made in sandbox won't work in the live account, so delete the test rows first.
+When your sandbox test works end to end: run **Connect to Square** again (in **Setup and checks (admin)**), enter `live` and the Production access token, and create links for your real products. Links made in sandbox won't work in the live account, so delete the test rows first.
 
 ## Things to check
 
