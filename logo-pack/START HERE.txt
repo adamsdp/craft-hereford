@@ -37,6 +37,9 @@ FOLDERS
 07-email-signature   Logo for your email signature. Insert the 600px file
                      and set its width to 300px so it stays sharp.
 
+08-square-checkout   Logo for the Square payment page (Payment Links > Settings >
+                     Branding). Exactly 1280 x 680 px: badge or horizontal.
+
 COLOURS
 -------
 Craft blue   #6894AE   RGB 104 148 174

@@ -123,6 +123,24 @@ The Monthly report adds **Square fees on synced sales** and **Craft Hereford com
 
 **Cross-check:** a month's sales in Square's own reports should equal Total sales on the Monthly report (before fees), provided every sale was a sheet link and has been synced.
 
+## The payment page: logo, colours and Apple Pay
+
+The page a customer sees after scanning is Square's own hosted checkout, so what you can change is limited to the settings below.
+
+**Logo and button colour (in Square, no code):**
+1. In the Square Dashboard go to **Payment Links ▸ Settings ▸ Branding** (Square's guide: [Customize Square payment links](https://squareup.com/help/article/8364-customize-square-payment-links)).
+2. Turn on the **Logo** and upload one of the ready-made files from `logo-pack/08-square-checkout/`. They are exactly 1280 × 680 px, the size Square recommends:
+   - `square-checkout-logo-badge-1280x680.png`: the round badge centred.
+   - `square-checkout-logo-horizontal-1280x680.png`: icon and name side by side.
+3. Choose a **buy button colour**. Use the deep blue `#2F5568`: white text on it is easy to read (about 8:1 contrast), whereas on the paler Craft blue `#6894AE` it is only about 3:1.
+
+Menu names can change; if a screen looks different, search Square's help for "Payment Links branding". Settings may be per location and per environment, so set them in the **live** Square account as well as in sandbox.
+
+**Apple Pay and Google Pay:** the script asks Square to offer both on every link it creates (`ACCEPT_WALLETS` at the top of `Code.gs`; set it to `false` to turn that off). Things to know:
+- They only appear on devices and browsers that support them: Apple Pay in Safari on an iPhone, iPad or Mac, Google Pay in Chrome on Android.
+- Square's developer forums have reports of Apple Pay **not appearing on links made through the API** even with the setting on, while Google Pay does appear, and Apple Pay appearing on links made by hand in the Dashboard. I can't confirm whether that affects your account, so please test it on a real iPhone with a **live** link and a small payment (refund it afterwards). I don't believe Apple Pay can be tested in sandbox.
+- If Square refuses the setting, the script still creates the link (without wallets) and tells you in the pop-up.
+
 ## Reports and payments
 
 The report tabs are formulas, so they update by themselves; nothing needs the script.

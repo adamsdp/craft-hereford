@@ -14,6 +14,7 @@ var LOCATIONS = 'Locations';
 var SETTINGS = 'Settings';
 var CURRENCY = 'GBP';
 var SQUARE_VERSION = '2025-10-16';
+var ACCEPT_WALLETS = true;   // offer Apple Pay and Google Pay on the checkout page (shown only on devices that support them)
 var MAX_ROWS = 500;          // rows pre-filled with formulas and dropdowns on Products
 var LIST_ROWS = 1000;        // rows covered by the Makers / Locations dropdown ranges
 
@@ -426,7 +427,7 @@ function itemCodeFor_(lookups, maker, location, existingCodes) {
 }
 
 function buildPaymentLinkBody(row, locationId, idempotencyKey) {
-  return {
+  var body = {
     idempotency_key: idempotencyKey,
     quick_pay: {
       name: linkName(row.code, row.desc, row.maker),
@@ -435,6 +436,10 @@ function buildPaymentLinkBody(row, locationId, idempotencyKey) {
     },
     payment_note: row.code + ' | ' + row.maker + ' | ' + (row.location || '') + ' | ' + row.desc
   };
+  if (ACCEPT_WALLETS) {
+    body.checkout_options = { accepted_payment_methods: { apple_pay: true, google_pay: true } };
+  }
+  return body;
 }
 
 // ---- Create links ----------------------------------------------------------
@@ -451,7 +456,7 @@ function createLinks() {
   var codes = data.map(function (r) { return r[COL.CODE - 1]; }).filter(String);
   var lookups = codeLookups_();
 
-  var made = 0, problems = [];
+  var made = 0, walletsRefused = 0, problems = [];
   for (var i = 0; i < data.length; i++) {
     var r = data[i];
     var rowNum = i + 2;
@@ -480,14 +485,28 @@ function createLinks() {
       pence: pence
     }, cfg.location, Utilities.getUuid());
 
-    var res = UrlFetchApp.fetch(cfg.base + '/v2/online-checkout/payment-links', {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { Authorization: 'Bearer ' + cfg.token, 'Square-Version': SQUARE_VERSION },
-      payload: JSON.stringify(body),
-      muteHttpExceptions: true
-    });
+    var post = function (b) {
+      return UrlFetchApp.fetch(cfg.base + '/v2/online-checkout/payment-links', {
+        method: 'post',
+        contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + cfg.token, 'Square-Version': SQUARE_VERSION },
+        payload: JSON.stringify(b),
+        muteHttpExceptions: true
+      });
+    };
+    var res = post(body);
     var json = JSON.parse(res.getContentText() || '{}');
+    // If Square refuses the Apple Pay / Google Pay setting, make the link without it rather than fail.
+    if (res.getResponseCode() >= 300 && body.checkout_options) {
+      var plain = JSON.parse(JSON.stringify(body));
+      delete plain.checkout_options;
+      plain.idempotency_key = Utilities.getUuid();
+      var res2 = post(plain);
+      var json2 = JSON.parse(res2.getContentText() || '{}');
+      if (res2.getResponseCode() < 300 && json2.payment_link) {
+        res = res2; json = json2; walletsRefused++;
+      }
+    }
     if (res.getResponseCode() >= 300 || !json.payment_link) {
       var msg = json.errors && json.errors[0] ? json.errors[0].detail || json.errors[0].code : 'HTTP ' + res.getResponseCode();
       problems.push('Row ' + rowNum + ': Square said: ' + msg);
@@ -503,6 +522,7 @@ function createLinks() {
   }
 
   var summary = made + ' link(s) created in ' + cfg.env + ' mode.';
+  if (walletsRefused) summary += '\n\nNote: Square would not accept the Apple Pay / Google Pay setting for ' + walletsRefused + ' link(s), so those links were made without it.';
   if (problems.length) summary += '\n\nSkipped:\n' + problems.join('\n');
   flush_();
   ui.alert(summary);
