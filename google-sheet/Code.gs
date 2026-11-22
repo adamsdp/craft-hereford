@@ -694,13 +694,23 @@ function syncSales() {
   var off = switchOffSoldLinks_(sh, cfg);
   props.setProperty('SQUARE_LAST_SYNC', now.toISOString());
 
+  var byStatus = {};
+  payments.forEach(function (p) { byStatus[p.status || '?'] = (byStatus[p.status || '?'] || 0) + 1; });
+  var statusText = Object.keys(byStatus).map(function (k) { return byStatus[k] + ' ' + k.toLowerCase(); }).join(', ');
+
   var msg = 'Synced with Square (' + cfg.env + '), payments since ' + begin.toISOString().slice(0, 10) + '.\n\n' +
+    '• Square returned ' + payments.length + ' payment(s) for this location' + (payments.length ? ' (' + statusText + ')' : '') + '\n' +
     '• ' + res.newlySold.length + ' item(s) newly marked Sold' + (res.newlySold.length ? ':' + listShort_(res.newlySold, 10) : '') + '\n' +
     '• ' + res.alreadyDone + ' already up to date\n' +
     '• ' + off.done + ' link(s) switched off';
   if (off.problems.length) msg += '\n  (could not switch off: ' + off.problems.join('; ') + ')';
   if (res.flagged.length) msg += '\n\nNeeds your attention (also in the Sync note column):' + listShort_(res.flagged, 10);
   if (res.unmatched.length) msg += '\n\nPayments not matched to an item:' + listShort_(res.unmatched, 10);
+  if (!payments.length) {
+    msg += '\n\nNo payments found. Check that the test payment was completed through one of this sheet\'s links, ' +
+      'in the same Square environment (' + cfg.env + ') and at the same location, and that it appears in the Square ' +
+      cfg.env + ' dashboard under Payments. New payments can take a minute to show up.';
+  }
   ui.alert(msg);
 }
 
