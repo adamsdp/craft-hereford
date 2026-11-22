@@ -107,9 +107,21 @@ HCH-AJ-001
 - Two makers (or two locations) can end up with the same code, for example Amanda Jones and Alan Jenkins are both `AJ`. These cells turn red. Type a different code over the formula (`AMJ`) **before** adding their items.
 - This needs the script installed (see setup). Without it, the Item code column stays empty and you'd type codes yourself.
 
+### Status: the stages an item goes through
+**Draft → Ready to list → Listed → Sold**
+
+| Status | Meaning | Who sets it |
+|---|---|---|
+| **Draft** | Still being prepared. No payment link is made. | The sheet sets it when you type a description; you can set it back at any time. |
+| **Ready to list** | Finished. **Only items with this status get a Square payment link.** | You, when the item is ready. |
+| **Listed** | On sale: it has a payment link, and its tag can be printed. | The sheet, when the link is made. |
+| **Sold** | Sold. | The sheet (from Square), or you for a sale in person. |
+
+The item code follows the maker and venue while an item is Draft or Ready to list, and is fixed from Listed onwards. Draft items are never given a link, even if every detail is filled in, so you can build up a row over several visits without it being published by accident.
+
 ### Create links
 **Craft Hereford → 1. Create payment links for new items**.
-Each row without a link gets one, and the script writes back the link URL, and sets Status to *Listed*. Rows with a problem (no price, maker, location or commission rate) are skipped and listed in the message. Items already marked *Sold* never get a link, and rows that already have one are left alone.
+Each item with Status **Ready to list** (and no link yet) gets a payment link, and the script writes back the link URL and sets Status to *Listed*. Items that are still *Draft* (or have no status) are left alone, and the pop-up tells you how many. Rows marked Ready to list that have a problem (no price, maker, location or commission rate) are skipped and listed in the message. Items already *Sold* or *Listed* never get a link, and rows that already have one are left alone.
 
 ### Print tags
 1. Optional: select the rows you want (select two or more rows). With no selection, every row with Status *Listed* is printed.

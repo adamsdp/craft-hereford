@@ -14,6 +14,7 @@ var LOCATIONS = 'Locations';
 var SETTINGS = 'Settings';
 var CURRENCY = 'GBP';
 var SQUARE_VERSION = '2025-10-16';
+var STATUS_READY = 'Ready to list';     // only items with this status get a Square payment link
 var SCRIPT_VERSION = '2026-11-22.4';   // shown in Check Square connection, so you can tell which copy is pasted in
 var ACCEPT_WALLETS = true;   // offer Apple Pay and Google Pay on the checkout page (shown only on devices that support them)
 var MAX_ROWS = 500;          // rows pre-filled with formulas and dropdowns on Products
@@ -202,7 +203,7 @@ function setupProducts_(sh, makers, locations, settings) {
     .requireValueInRange(range(settings, 'A' + SET_CHOICES_FIRST_ROW + ':A' + (SET_CHOICES_FIRST_ROW + 29)), true)
     .setAllowInvalid(false).setHelpText('Choose a rate; to add rates, edit the list on the Settings tab').build());
   sh.getRange(2, COL.STATUS, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
-    .requireValueInList(['Draft', 'Listed', 'Sold'], true).build());
+    .requireValueInList(['Draft', STATUS_READY, 'Listed', 'Sold'], true).build());
 
   // Formulas. A Sold row keeps its frozen venue % so later rate changes don't alter it.
   var status = sh.getRange(2, COL.STATUS, n, 1).getValues();
@@ -283,6 +284,8 @@ function productsEdited_(sh, rg) {
     var hasDesc = String(sh.getRange(r, COL.DESC).getValue()).trim() !== '';
     var sell = sh.getRange(r, COL.SELL_PCT);
     if (hasDesc && sell.getValue() === '') sell.setValue(sellDefault);
+    var statusCell = sh.getRange(r, COL.STATUS);
+    if (hasDesc && statusCell.getValue() === '') statusCell.setValue('Draft');   // new items start as Draft
 
     // The item code follows the chosen maker and location until the payment link is made.
     var codeCell = sh.getRange(r, COL.CODE);
@@ -520,12 +523,17 @@ function createLinks() {
   var codes = data.map(function (r) { return r[COL.CODE - 1]; }).filter(String);
   var lookups = codeLookups_();
 
-  var made = 0, walletsRefused = 0, problems = [];
+  var made = 0, walletsRefused = 0, draftSkipped = 0, problems = [];
   for (var i = 0; i < data.length; i++) {
     var r = data[i];
     var rowNum = i + 2;
     if (r[COL.URL - 1] || !String(r[COL.DESC - 1]).trim()) continue; // already has link / empty row
-    if (r[COL.STATUS - 1] === 'Sold') continue;   // never make a link for something already sold
+    var status = r[COL.STATUS - 1];
+    if (status === 'Sold' || status === 'Listed') continue;          // already sold, or already on sale
+    if (status !== STATUS_READY) {                                  // Draft or blank: not finished, so no link yet
+      draftSkipped++;
+      continue;
+    }
 
     var pence = toPence(r[COL.PRICE - 1]);
     if (!pence) { problems.push('Row ' + rowNum + ': missing or invalid price'); continue; }
@@ -585,10 +593,18 @@ function createLinks() {
     made++;
   }
 
-  var summary = made + ' payment link(s) created' + (cfg.env === 'sandbox' ? ' (TEST mode: no real payments)' : '') + '.';
-  if (made) summary += '\n\nNext: print the tags with "2. Print tags".';
-  if (walletsRefused) summary += '\n\nNote: Square would not accept the Apple Pay / Google Pay setting for ' + walletsRefused + ' link(s), so those links were made without it.';
+  var summary = made
+    ? made + ' payment link(s) created' + (cfg.env === 'sandbox' ? ' (TEST mode: no real payments)' : '') + '.\n\nNext: print the tags with "2. Print tags".'
+    : 'No payment links were created.';
+  if (!made && !draftSkipped && !problems.length) {
+    summary += '\n\nNo items are marked "' + STATUS_READY + '". When an item is finished, set its Status to "' + STATUS_READY + '", then try again.';
+  }
+  if (draftSkipped) {
+    summary += '\n\n' + draftSkipped + ' item(s) are still Draft (or have no status), so they were left alone. ' +
+      'Set their Status to "' + STATUS_READY + '" when they are finished.';
+  }
   if (problems.length) summary += '\n\nThese items need fixing before they can get a link:\n' + problems.join('\n');
+  if (walletsRefused) summary += '\n\nNote: Square would not accept the Apple Pay / Google Pay setting for ' + walletsRefused + ' link(s), so those links were made without it.';
   flush_();
   ui.alert(summary);
 }
