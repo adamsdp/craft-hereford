@@ -71,7 +71,7 @@ Start in sandbox: links work with Square's test cards and no real money moves.
 |---|---|
 | **Makers** | One row per maker: name, **code**, email, phone, address. These names fill the **Maker** dropdown on Products. The code fills itself in from the name (Amanda Jones → `AJ`); type over it to choose your own. |
 | **Locations** | One row per venue: name, **venue commission %**, **code**, email, phone, address. The code fills itself in like a maker's (Hereford Coffee House → `HCH`). These names fill the **Location** dropdown. A new location gets the default venue commission from Settings (10%); change it on its own row if that venue agreed something different. |
-| **Settings** | The default venue commission (10%), the default selling commission (10%), and the list of selling-commission rates offered in the dropdown (0%, 5%, 10%, 15%, 20%, 25%, 30%). Edit the list to add rates such as 12.5%. |
+| **Settings** | The default venue commission (10%), the default selling commission (10%), the **Transaction fee per item** (25p) and the list of selling-commission rates offered in the dropdown (0%, 5%, 10%, 15%, 20%, 25%, 30%). Edit the list to add rates such as 12.5%. |
 | **Products** | One row per item (see below). |
 
 Add makers and locations first, and delete the example row on each tab. Keep names unique and spelled the way you want them to appear on the tags. If you rename a maker or location, re-pick it on the Products rows that used it.
@@ -82,12 +82,13 @@ On the **Products** tab fill in **Product description**, **Maker** (dropdown), *
 The commission columns work like this:
 
 - **Venue commission %** (grey) is looked up from the Locations tab, so you don't type it.
-- **Selling commission %** is filled with your default (10%) as soon as you type a description. Pick another rate from the dropdown for any item. This is the share that goes to Craft Hereford to cover Square's fees and the running of the platform.
-- **Venue commission (GBP)**, **Craft Hereford commission (GBP)** and **Maker receives (GBP)** are calculated, on the item price. Maker receives = price − venue − Craft Hereford, and the two commissions are rounded to the penny.
+- **Selling commission %** is filled with your default (10%) as soon as you type a description. Pick another rate from the dropdown for any item. This is the share that goes to Craft Hereford. It covers Square's 1.4% charge and the running of the platform.
+- **Transaction fee (GBP)** is a flat fee on every item (25p), taken in addition to the two commissions. It covers Square's fixed 25p charge per sale. It is set once, on the Settings tab (**Transaction fee per item**), so you can change it there if Square's charge changes.
+- **Venue commission (GBP)**, **Craft Hereford commission (GBP)**, **Transaction fee (GBP)** and **Maker receives (GBP)** are calculated. Maker receives = price − venue commission − Craft Hereford commission − Transaction fee, and the two commissions are rounded to the penny.
 
-Example: a £25.00 scarf in a café on 10% venue commission and 10% selling commission gives £2.50 to the venue, £2.50 to Craft Hereford and £20.00 to the maker.
+Example: a £25.00 scarf in a café on 10% venue commission and 10% selling commission gives £2.50 to the venue, £2.50 to Craft Hereford, a 25p Transaction fee and £19.75 to the maker.
 
-When you set an item's **Status** to *Sold*, its venue commission % is frozen, so changing a location's rate later doesn't alter past sales. (Setting the status back to Draft or Listed restores the lookup.)
+When you set an item's **Status** to *Sold*, its venue commission % and its Transaction fee are frozen, so changing a location's rate or the fee later doesn't alter past sales. (Setting the status back to Draft or Listed restores the lookup.)
 
 ### Item codes
 
@@ -137,7 +138,7 @@ Each tag shows the description, the maker, the QR code, the price and the item c
 ### When an item sells: sync from Square
 Run **Craft Hereford ▸ 3. Update sold items from Square** (as often as you like; once a day or before a report is plenty). It reads your recent Square payments and, for each completed payment:
 - finds the item by the code in the payment note (or the order's item name);
-- sets its **Status** to *Sold*, its **Sold date** to the payment date, and freezes the venue commission rate;
+- sets its **Status** to *Sold*, its **Sold date** to the payment date, and freezes the venue commission rate and the Transaction fee;
 - records the **Square payment ID** and the **Square fee** on the row;
 - switches off that item's Square link, so nobody can pay for it twice.
 
@@ -152,7 +153,7 @@ Things it flags instead of guessing (also written to the **Sync note** column on
 
 You can still mark items *Sold* by hand (for example a cash sale). Updating from Square (step 3) also switches off the links of any *Sold* item that still has one, so that covers items you marked *Sold* by hand too. The same action is available on its own as **Setup and checks (admin) → Switch off links for sold items**.
 
-The Monthly report adds **Square fees on synced sales** and **Craft Hereford commission after Square fees**, so you can see whether the selling commission covers the fees. Fees are only known for items that have been synced.
+The Monthly report also shows **Transaction fees**, **Square fees on synced sales** and **Craft Hereford keeps after Square fees** (Craft Hereford commission + Transaction fees − Square's fees), so you can see whether the selling commission and Transaction fee cover what Square charges. Fees are only known for items that have been synced.
 
 **If the sync finds nothing or something looks wrong,** run **Craft Hereford ▸ Setup and checks (admin) ▸ Check Square connection**. It lists what Square can see for your token: the location in use, how many payment links and orders exist, and how many payments there are at each location. A payment that exists under a different location, or an order with no payment, shows up straight away.
 
@@ -193,8 +194,8 @@ On the report tabs themselves the help is in hover notes, which don't print eith
 
 ### Monthly report
 Choose a month from the **Month** dropdown (the last 36 months are listed). You get:
-- **Craft Hereford totals:** items sold, total sales, venue commission, Craft Hereford commission and the amount paid or payable to makers. A "Difference" line should read £0.00; if it doesn't, some sold item is missing a maker, location or commission.
-- **By maker:** items, sales, venue commission, Craft Hereford commission and what the maker receives.
+- **Craft Hereford totals:** items sold, total sales, venue commission, Craft Hereford commission, Transaction fees and the amount paid or payable to makers. These should add back up to total sales; if they don't, the "Paid or payable to makers" figure turns red because some sold item is missing a maker, location or commission.
+- **By maker:** items, sales, venue commission, Craft Hereford commission, Transaction fees and what the maker receives.
 - **By venue:** items, sales and the venue's commission.
 
 The two tables list up to 100 makers and 100 venues.
@@ -205,7 +206,7 @@ One statement is shown at a time, for either a maker or a venue, never both:
 2. **Name:** choose from the list (it switches to match the type; if the name doesn't match the type you'll see a prompt and the statement stays empty).
 3. **Month:** choose a month.
 
-You get the totals for the month and every item sold, in date order, with a Paid? column. A maker's statement shows what the maker receives; a venue's shows the venue commission.
+You get the totals for the month and every item sold, in date order, with a Paid? column. A maker's statement shows the venue commission, Craft Hereford commission and Transaction fee taken off, and what the maker receives; a venue's shows the venue commission.
 
 ### Outstanding payments
 Also one at a time: choose *Maker* or *Venue*, then a name. It shows the amount Craft Hereford still owes them, how many items that covers, their email, phone and address, and each unpaid item.

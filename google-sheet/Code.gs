@@ -15,7 +15,7 @@ var SETTINGS = 'Settings';
 var CURRENCY = 'GBP';
 var SQUARE_VERSION = '2025-10-16';
 var STATUS_READY = 'Ready to list';     // only items with this status get a Square payment link
-var SCRIPT_VERSION = '2026-11-22.4';   // shown in Check Square connection, so you can tell which copy is pasted in
+var SCRIPT_VERSION = '2026-11-22.5';   // shown in Check Square connection, so you can tell which copy is pasted in
 var ACCEPT_WALLETS = true;   // offer Apple Pay and Google Pay on the checkout page (shown only on devices that support them)
 var MAX_ROWS = 500;          // rows pre-filled with formulas and dropdowns on Products
 var LIST_ROWS = 1000;        // rows covered by the Makers / Locations dropdown ranges
@@ -24,15 +24,15 @@ var HEADERS = [
   'Item code', 'Product description', 'Maker', 'Location', 'Price (GBP)',
   'Venue commission %', 'Selling commission %', 'Status',
   'Square link URL', 'Square link ID', 'Date listed', 'Sold date',
-  'Venue commission (GBP)', 'Craft Hereford commission (GBP)', 'Maker receives (GBP)', 'Maker paid?', 'Venue paid?',
+  'Venue commission (GBP)', 'Craft Hereford commission (GBP)', 'Transaction fee (GBP)', 'Maker receives (GBP)', 'Maker paid?', 'Venue paid?',
   'Square payment ID', 'Square fee (GBP)', 'Sync note'
 ];
 var COL = {
   CODE: 1, DESC: 2, MAKER: 3, LOCATION: 4, PRICE: 5,
   VENUE_PCT: 6, SELL_PCT: 7, STATUS: 8,
   URL: 9, LINK_ID: 10, LISTED: 11, SOLD: 12,
-  VENUE_GBP: 13, SELL_GBP: 14, MAKER_GBP: 15, PAID: 16, VENUE_PAID: 17,
-  SQ_PAYMENT: 18, SQ_FEE: 19, SYNC_NOTE: 20
+  VENUE_GBP: 13, SELL_GBP: 14, TXN_FEE: 15, MAKER_GBP: 16, PAID: 17, VENUE_PAID: 18,
+  SQ_PAYMENT: 19, SQ_FEE: 20, SYNC_NOTE: 21
 };
 var MAKER_HEADERS = ['Name', 'Code', 'Email', 'Phone', 'Address', 'Outstanding (GBP)', 'Payment due?'];
 var LOCATION_HEADERS = ['Name', 'Venue commission %', 'Code', 'Email', 'Phone', 'Address', 'Outstanding (GBP)', 'Payment due?'];
@@ -40,6 +40,7 @@ var LOCATION_HEADERS = ['Name', 'Venue commission %', 'Code', 'Email', 'Phone', 
 // Settings tab cells
 var SET_VENUE_DEFAULT = 'B2';
 var SET_SELL_DEFAULT = 'B3';
+var SET_FEE = 'B4';              // flat Transaction Fee per item (Square's 25p), on top of both commissions
 var SET_CHOICES_FIRST_ROW = 6;   // selling-commission choices are listed from A6 down
 
 /** Saves pending changes to the sheet now, so they are visible even while a pop-up is open. */
@@ -78,7 +79,8 @@ function venueFormula_(r) {
 }
 function venueGbpFormula_(r) { return '=IF(OR(E' + r + '="",F' + r + '=""),"",ROUND(E' + r + '*F' + r + ',2))'; }
 function sellGbpFormula_(r)  { return '=IF(OR(E' + r + '="",G' + r + '=""),"",ROUND(E' + r + '*G' + r + ',2))'; }
-function makerGbpFormula_(r) { return '=IF(OR(M' + r + '="",N' + r + '=""),"",E' + r + '-M' + r + '-N' + r + ')'; }
+function feeFormula_(r)      { return '=IF(E' + r + '="","",' + SETTINGS + '!$B$4)'; }
+function makerGbpFormula_(r) { return '=IF(OR(M' + r + '="",N' + r + '="",O' + r + '=""),"",E' + r + '-M' + r + '-N' + r + '-O' + r + ')'; }
 
 /** Short code from a name in column A: initials ("Amanda Jones" -> AJ) or first 3 letters of a one-word name. */
 function shortCodeFormula_(r) {
@@ -113,8 +115,8 @@ function setupSheet() {
   setupList_(locations, LOCATION_HEADERS, ['Example Cafe', 0.10, '', 'cafe@example.com', '01432 000000', '2 High Town, Hereford'], 5, 3);
   locations.getRange(2, 2, LIST_ROWS - 1, 1).setNumberFormat('0.0%');
   // Amount Craft Hereford still owes each maker / venue: sold items whose Paid? box isn't ticked.
-  setupOutstanding_(makers, 6, 'Products!$O:$O', 'Products!$C:$C', 'Products!$P:$P');
-  setupOutstanding_(locations, 7, 'Products!$M:$M', 'Products!$D:$D', 'Products!$Q:$Q');
+  setupOutstanding_(makers, 6, 'Products!$P:$P', 'Products!$C:$C', 'Products!$Q:$Q');
+  setupOutstanding_(locations, 7, 'Products!$M:$M', 'Products!$D:$D', 'Products!$R:$R');
   setupProducts_(products, makers, locations, settings);
 
   ss.setActiveSheet(products);
@@ -125,9 +127,11 @@ function setupSheet() {
 
 function setupSettings_(sh) {
   sh.getRange('A1:B1').setValues([['Setting', 'Value']]).setFontWeight('bold');
-  sh.getRange('A2:A3').setValues([['Default venue commission'], ['Default selling commission']]);
+  sh.getRange('A2:A4').setValues([['Default venue commission'], ['Default selling commission'], ['Transaction fee per item (GBP)']]);
   if (sh.getRange(SET_VENUE_DEFAULT).isBlank()) sh.getRange(SET_VENUE_DEFAULT).setValue(0.10);
   if (sh.getRange(SET_SELL_DEFAULT).isBlank()) sh.getRange(SET_SELL_DEFAULT).setValue(0.10);
+  if (sh.getRange(SET_FEE).isBlank()) sh.getRange(SET_FEE).setValue(0.25);
+  sh.getRange(SET_FEE).setNumberFormat('"£"0.00');
   sh.getRange('A5').setValue('Selling commission choices (the dropdown on Products uses this list; add or edit values here)').setFontWeight('bold');
   var r = SET_CHOICES_FIRST_ROW;
   if (sh.getRange(r, 1).isBlank()) {
@@ -138,7 +142,7 @@ function setupSettings_(sh) {
   sh.getRange('A6:A35').setHorizontalAlignment('left');
   sh.setColumnWidth(1, 330);
   sh.setColumnWidth(2, 90);
-  sh.getRange('B2:B3').setBackground('#fff2cc');   // inputs you can change
+  sh.getRange('B2:B4').setBackground('#fff2cc');   // inputs you can change
 }
 
 function setupList_(sh, headers, exampleRow, phoneCol, codeCol) {
@@ -209,15 +213,17 @@ function setupProducts_(sh, makers, locations, settings) {
   var status = sh.getRange(2, COL.STATUS, n, 1).getValues();
   var venueCol = sh.getRange(2, COL.VENUE_PCT, n, 1).getFormulas();
   var venueVals = sh.getRange(2, COL.VENUE_PCT, n, 1).getValues();
+  var feeCol = sh.getRange(2, COL.TXN_FEE, n, 1).getFormulas();
+  var feeVals = sh.getRange(2, COL.TXN_FEE, n, 1).getValues();   // a Sold row keeps the fee it was sold with
   var venue = [], gbp = [];
   for (var i = 0; i < n; i++) {
     var r = i + 2;
     if (status[i][0] === 'Sold' && !venueCol[i][0] && venueVals[i][0] !== '') venue.push([venueVals[i][0]]);
     else venue.push([venueFormula_(r)]);
-    gbp.push([venueGbpFormula_(r), sellGbpFormula_(r), makerGbpFormula_(r)]);
+    gbp.push([venueGbpFormula_(r), sellGbpFormula_(r), (status[i][0] === 'Sold' && !feeCol[i][0] && feeVals[i][0] !== '') ? feeVals[i][0] : feeFormula_(r), makerGbpFormula_(r)]);
   }
   sh.getRange(2, COL.VENUE_PCT, n, 1).setFormulas(venue);
-  sh.getRange(2, COL.VENUE_GBP, n, 3).setFormulas(gbp);
+  sh.getRange(2, COL.VENUE_GBP, n, 4).setFormulas(gbp);
 
   // Light green on the columns people fill in (headings use a stronger green).
   [[COL.DESC, 4], [COL.SELL_PCT, 2], [COL.PAID, 2]].forEach(function (c) {
@@ -230,15 +236,15 @@ function setupProducts_(sh, makers, locations, settings) {
   // Formats
   sh.getRange(2, COL.PRICE, n, 1).setNumberFormat('"£"0.00');
   sh.getRange(2, COL.VENUE_PCT, n, 2).setNumberFormat('0.0%');
-  sh.getRange(2, COL.VENUE_GBP, n, 3).setNumberFormat('"£"0.00');
+  sh.getRange(2, COL.VENUE_GBP, n, 4).setNumberFormat('"£"0.00');
   sh.getRange(2, COL.SQ_FEE, n, 1).setNumberFormat('"£"0.00');
   sh.getRange(2, COL.LISTED, n, 2).setNumberFormat('dd mmm yyyy');
   sh.getRange(2, COL.VENUE_PCT, n, 1).setFontColor('#555555');          // set by the location
   sh.getRange(2, COL.LINK_ID, n, 1).setFontColor('#888888');
-  sh.getRange(2, COL.VENUE_GBP, n, 3).setBackground('#f3f3f3');         // calculated
-  sh.getRange(1, COL.VENUE_GBP, 1, 3).setBackground('#e0e0e0');
+  sh.getRange(2, COL.VENUE_GBP, n, 4).setBackground('#f3f3f3');         // calculated
+  sh.getRange(1, COL.VENUE_GBP, 1, 4).setBackground('#e0e0e0');
 
-  var widths = [90, 260, 150, 150, 90, 110, 110, 80, 220, 130, 100, 100, 120, 140, 120, 90, 90, 190, 100, 300];
+  var widths = [90, 260, 150, 150, 90, 110, 110, 80, 220, 130, 100, 100, 120, 140, 130, 120, 90, 90, 190, 100, 300];
   widths.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
 }
 
@@ -361,12 +367,15 @@ function productsEdited_(sh, rg) {
     // Status changes: freeze the venue % when Sold, restore the formula otherwise.
     var status = sh.getRange(r, COL.STATUS).getValue();
     var venue = sh.getRange(r, COL.VENUE_PCT);
+    var fee = sh.getRange(r, COL.TXN_FEE);
     if (status === 'Sold') {
       if (venue.getFormula()) venue.setValue(venue.getValue());
+      if (fee.getFormula()) fee.setValue(fee.getValue());      // the Transaction Fee is locked in too
       var sold = sh.getRange(r, COL.SOLD);
       if (sold.getValue() === '') sold.setValue(new Date());
-    } else if (!venue.getFormula()) {
-      venue.setFormula(venueFormula_(r));
+    } else {
+      if (!venue.getFormula()) venue.setFormula(venueFormula_(r));
+      if (!fee.getFormula()) fee.setFormula(feeFormula_(r));
     }
   }
   refreshVenuePaidNA_(sh, first, last);
@@ -786,6 +795,8 @@ function applyPayments_(sh, payments, orderText) {
         sh.getRange(rowNum, COL.SOLD).setValue(when);
         var venue = sh.getRange(rowNum, COL.VENUE_PCT);          // freeze the venue rate, as marking Sold by hand does
         if (venue.getFormula()) venue.setValue(venue.getValue());
+        var fee = sh.getRange(rowNum, COL.TXN_FEE);               // and lock in the Transaction Fee
+        if (fee.getFormula()) fee.setValue(fee.getValue());
         res.newlySold.push(code);
         data[i][COL.STATUS - 1] = 'Sold';
       }
@@ -1044,8 +1055,8 @@ function getReportData(kind, sel) {
       };
       return {
         title: 'Monthly selling report', period: sh.getRange('B3').getDisplayValue(), generated: generated,
-        totals: sh.getRange('A8:B15').getDisplayValues().filter(function (r) { return r[0] && String(r[0]).indexOf('Difference') !== 0; }),
-        makers: table(1, 6), venues: table(8, 4)
+        totals: sh.getRange('A8:B15').getDisplayValues().filter(function (r) { return r[0]; }),
+        makers: table(1, 7), venues: table(9, 4)
       };
     }
 
@@ -1059,11 +1070,11 @@ function getReportData(kind, sel) {
     var who = whoFor_(ss, type, name);
 
     if (kind === 'statement') {
-      var blk = listBlock_(sh, 18, 7, 300);
+      var blk = listBlock_(sh, 19, 7, 300);
       var none = blk.rows.length === 1 && String(blk.rows[0][0]).indexOf('No items sold') === 0;
       return {
         title: 'Statement', period: sh.getRange('B6').getDisplayValue(), generated: generated, who: who,
-        summary: sh.getRange('A10:B15').getDisplayValues().filter(function (r) { return r[0]; }),
+        summary: sh.getRange('A10:B16').getDisplayValues().filter(function (r) { return r[0]; }),
         items: { header: blk.header, rows: none ? [] : blk.rows, message: 'No items sold in this month.' }
       };
     }
