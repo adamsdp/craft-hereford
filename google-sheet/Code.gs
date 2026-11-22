@@ -773,7 +773,14 @@ function checkSquare() {
   var ui = SpreadsheetApp.getUi();
   var cfg = squareConfig_();
   var since = new Date(Date.now() - 90 * DAY_MS), now = new Date();
-  var lines = ['Environment: ' + cfg.env, 'Location ID in use: ' + cfg.location, ''];
+  var lines = ['Environment: ' + cfg.env, 'Location ID in use: ' + cfg.location];
+  try {
+    var scriptTz = Session.getScriptTimeZone();
+    var sheetTz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+    lines.push('Time zones: script ' + scriptTz + ', sheet ' + sheetTz +
+      (scriptTz === sheetTz ? ' (match)' : ' (DIFFERENT: set both to Europe/London)'));
+  } catch (e) { lines.push('Time zones: could not read'); }
+  lines.push('');
   var locs = [];
 
   try {
