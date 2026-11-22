@@ -49,7 +49,7 @@ function flush_() {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Craft Hereford')
     .addItem('1. Create Square links for new rows', 'createLinks')
-    .addItem('2. Print labels...', 'showLabelDialog')
+    .addItem('2. Print tags...', 'showLabelDialog')
     .addItem('3. Sync sales from Square', 'syncSales')
     .addItem('4. Switch off links for sold items', 'disableSoldLinks')
     .addSeparator()
@@ -819,8 +819,8 @@ function checkSquare() {
 // ---- Labels ----------------------------------------------------------------
 function showLabelDialog() {
   var t = HtmlService.createTemplateFromFile('Labels');
-  var html = t.evaluate().setWidth(900).setHeight(650);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Print labels');
+  var html = t.evaluate().setWidth(900).setHeight(720);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Print tags');
 }
 
 /** Rows to print: the selected rows, or every Listed row if nothing is selected. */
@@ -862,13 +862,32 @@ function sheetSelectionRows_(sh) {
   return count > 1 ? rows : null;
 }
 
+var TAG_DEFAULTS = {
+  width: 45, height: 65, copies: 1,        // tag size in mm
+  taper: 10, tip: 18,                      // depth of the sloping top corners, and the width of the flat tip, in mm
+  gap: 3, margin: 10,                      // space between tags, and around the page, in mm
+  outline: true, mark: true                // print the cut outline and the hole marker
+};
+
+/** Saved tag settings for this user, with defaults filled in. */
 function getLabelSettings() {
-  var p = PropertiesService.getUserProperties().getProperties();
-  return { width: Number(p.LABEL_W) || 62, height: Number(p.LABEL_H) || 29, copies: Number(p.LABEL_COPIES) || 1 };
+  var saved = {};
+  try { saved = JSON.parse(PropertiesService.getUserProperties().getProperty('TAG_SETTINGS') || '{}'); } catch (e) { saved = {}; }
+  var out = {};
+  Object.keys(TAG_DEFAULTS).forEach(function (k) {
+    var v = saved[k];
+    var isBool = typeof TAG_DEFAULTS[k] === 'boolean';
+    out[k] = isBool ? (typeof v === 'boolean' ? v : TAG_DEFAULTS[k])
+                    : (typeof v === 'number' && isFinite(v) && v >= 0 ? v : TAG_DEFAULTS[k]);
+  });
+  return out;
 }
 
 function saveLabelSettings(s) {
-  PropertiesService.getUserProperties().setProperties({
-    LABEL_W: String(s.width), LABEL_H: String(s.height), LABEL_COPIES: String(s.copies)
+  var clean = {};
+  Object.keys(TAG_DEFAULTS).forEach(function (k) {
+    if (typeof TAG_DEFAULTS[k] === 'boolean') clean[k] = !!s[k];
+    else if (typeof s[k] === 'number' && isFinite(s[k])) clean[k] = s[k];
   });
+  PropertiesService.getUserProperties().setProperty('TAG_SETTINGS', JSON.stringify(clean));
 }

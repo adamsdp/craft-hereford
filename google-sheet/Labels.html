@@ -5,63 +5,81 @@
   <meta charset="utf-8">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <style>
-    :root { --w: 62mm; --h: 29mm; }
+    :root { --s: 1; }                      /* scale: tag width / 45 mm, so text grows with bigger tags */
     * { box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: #000; }
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: #000; background: #e9e9e9; }
 
     /* ---- Controls (hidden when printing) ---- */
-    #controls { padding: 12px 16px; background: #f4f1ea; border-bottom: 1px solid #ccc; }
-    #controls label { margin-right: 14px; font-size: 13px; }
-    #controls input[type=number] { width: 60px; }
+    #controls { padding: 10px 16px; background: #f4f1ea; border-bottom: 1px solid #ccc; position: sticky; top: 0; z-index: 2; }
+    #controls label { margin-right: 12px; font-size: 13px; white-space: nowrap; }
+    #controls input[type=number] { width: 56px; }
     #controls button { padding: 6px 14px; font-size: 14px; cursor: pointer; }
+    #controls details { margin-top: 8px; font-size: 13px; }
+    #controls details label { display: inline-block; margin: 4px 12px 0 0; }
     #status { margin-left: 10px; font-size: 13px; color: #555; }
-    #hint { padding: 0 16px; font-size: 12px; color: #555; }
-    #preview { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+    #status.warn { color: #b00020; }
+    #hint { padding: 6px 16px; font-size: 12px; color: #555; background: #f4f1ea; }
 
-    /* ---- One label ---- */
-    .label {
-      width: var(--w); height: var(--h);
-      display: flex; align-items: center; gap: 2mm;
-      padding: 1.5mm;
-      overflow: hidden; background: #fff;
-      border: 0.2mm dashed #aaa;
-      page-break-after: always; break-after: page;
-    }
-    .qr { flex: 0 0 auto; height: calc(var(--h) - 3mm); width: calc(var(--h) - 3mm); }
-    .qr svg { width: 100%; height: 100%; display: block; }
-    .text { flex: 1 1 auto; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
-    .desc { flex: 1 1 0; min-height: 0; overflow: hidden; font-weight: bold; line-height: 1.1;
-            font-size: calc(var(--h) * 0.13); }
-    .maker { flex: 0 0 auto; font-size: calc(var(--h) * 0.1); line-height: 1.15; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .price { flex: 0 0 auto; font-weight: bold; font-size: calc(var(--h) * 0.22); line-height: 1.05; white-space: nowrap; }
-    .code { flex: 0 0 auto; font-size: calc(var(--h) * 0.095); line-height: 1.1; white-space: nowrap; overflow: hidden; }
-    .code b { letter-spacing: 0.02em; }
+    /* ---- A4 sheets ---- */
+    .sheet { position: relative; width: 210mm; height: 297mm; margin: 10px auto; background: #fff;
+             box-shadow: 0 0 6px rgba(0,0,0,.35); overflow: hidden; page-break-after: always; break-after: page; }
 
+    /* ---- One tag ---- */
+    .tag { position: absolute; }
+    .outline { position: absolute; left: 0; top: 0; pointer-events: none; }
+    .body { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 0 calc(3mm * var(--s)) calc(2.6mm * var(--s)) calc(3mm * var(--s)); }
+    .desc { width: 100%; text-align: center; font-weight: bold; line-height: 1.1; overflow: hidden;
+            font-size: calc(3.4mm * var(--s)); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+    .maker { width: 100%; text-align: center; font-size: calc(2.9mm * var(--s)); line-height: 1.15;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: calc(0.6mm * var(--s)); flex: 0 0 auto; }
+    .qr { flex: 1 1 auto; min-height: 0; width: 100%; margin: calc(1.2mm * var(--s)) 0 calc(0.4mm * var(--s));
+          display: flex; align-items: center; justify-content: center; }
+    .qr svg { height: 100%; width: auto; max-width: 100%; aspect-ratio: 1 / 1; display: block; }
+    .scan { font-size: calc(2mm * var(--s)); color: #444; line-height: 1; flex: 0 0 auto; }
+    .pricerow { width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: calc(1mm * var(--s));
+                flex: 0 0 auto; margin-top: calc(0.8mm * var(--s)); overflow: hidden; }
+    .price { font-weight: bold; font-size: calc(5.4mm * var(--s)); line-height: 1.05; white-space: nowrap; }
+    .code { font-size: calc(2.7mm * var(--s)); font-weight: bold; letter-spacing: .02em; line-height: 1.1; white-space: nowrap; text-align: right; }
+
+    @page { size: A4 portrait; margin: 0; }
     @media print {
+      body { background: #fff; }
       #controls, #hint { display: none !important; }
-      #preview { display: block; padding: 0; }
-      .label { border: none; }
+      .sheet { margin: 0; box-shadow: none; }
+      .sheet:last-child { page-break-after: auto; break-after: auto; }
     }
   </style>
-  <style id="pageSize"></style>
 </head>
 <body>
   <div id="controls">
-    <label>Label width (mm) <input type="number" id="w" min="10" max="200" step="1" value="62"></label>
-    <label>Height (mm) <input type="number" id="h" min="10" max="200" step="1" value="29"></label>
+    <label>Tag width (mm) <input type="number" id="w" min="20" max="100" step="1" value="45"></label>
+    <label>Height (mm) <input type="number" id="h" min="30" max="140" step="1" value="65"></label>
     <label>Copies of each <input type="number" id="copies" min="1" max="20" value="1"></label>
     <button id="refresh">Update preview</button>
     <button id="print">Print</button>
     <span id="status">Loading...</span>
+    <details>
+      <summary>More options</summary>
+      <label>Tapered end depth (mm) <input type="number" id="taper" min="4" max="40" step="1" value="10"></label>
+      <label>Width of the tip (mm) <input type="number" id="tip" min="8" max="60" step="1" value="18"></label>
+      <label>Gap between tags (mm) <input type="number" id="gap" min="0" max="10" step="1" value="3"></label>
+      <label>Page margin (mm) <input type="number" id="margin" min="0" max="30" step="1" value="10"></label>
+      <label><input type="checkbox" id="outline" checked> Print cut outline</label>
+      <label><input type="checkbox" id="mark" checked> Print hole marker (+)</label>
+    </details>
   </div>
   <div id="hint">
-    Prints the rows you've selected (select 2+ rows), or every row with Status = Listed.
-    In the print window choose your label printer and set the paper size to your label size, margins None, scale 100%.
+    Prints the rows you've selected (select 2+ rows), or every row with Status = Listed, as tags on A4.
+    In the print window choose <b>A4</b>, <b>Margins: None</b> and <b>Scale: 100%</b> (not "fit to page"), then print on card.
+    Cut along the grey outline and punch the ribbon hole at the +.
   </div>
   <div id="preview"></div>
 
   <script>
     var rows = [];
+    var PAGE_W = 210, PAGE_H = 297;
 
     function qrSvg(url) {
       var qr = qrcode(0, 'M');
@@ -70,14 +88,7 @@
       return qr.createSvgTag({ scalable: true, margin: 0 });
     }
 
-    function applySize() {
-      var w = Number(document.getElementById('w').value) || 62;
-      var h = Number(document.getElementById('h').value) || 29;
-      document.documentElement.style.setProperty('--w', w + 'mm');
-      document.documentElement.style.setProperty('--h', h + 'mm');
-      document.getElementById('pageSize').textContent = '@page { size: ' + w + 'mm ' + h + 'mm; margin: 0; }';
-    }
-
+    function num(id, dflt) { var v = Number(document.getElementById(id).value); return isFinite(v) && v > 0 ? v : dflt; }
     function el(tag, cls, text) {
       var e = document.createElement(tag);
       if (cls) e.className = cls;
@@ -85,82 +96,131 @@
       return e;
     }
 
+    function settings() {
+      return {
+        width: num('w', 45), height: num('h', 65), copies: Math.max(1, Math.floor(num('copies', 1))),
+        taper: num('taper', 10), tip: num('tip', 18), gap: Number(document.getElementById('gap').value) || 0,
+        margin: Number(document.getElementById('margin').value) || 0,
+        outline: document.getElementById('outline').checked, mark: document.getElementById('mark').checked
+      };
+    }
+
+    /** The cut outline: a rectangle whose top corners slope in to a narrower tip, plus the hole marker. */
+    function outlineSvg(S) {
+      var W = S.width, H = S.height, T = Math.min(S.taper, H - 5), tip = Math.min(S.tip, W);
+      var x0 = (W - tip) / 2, x1 = (W + tip) / 2;
+      var shape = '<polygon points="0,' + T + ' ' + x0 + ',0 ' + x1 + ',0 ' + W + ',' + T + ' ' + W + ',' + H + ' 0,' + H + '"' +
+        ' fill="none" stroke="' + (S.outline ? '#9a9a9a' : 'none') + '" stroke-width="0.25" stroke-linejoin="round"/>';
+      var cy = Math.min(T * 0.55, 7), cx = W / 2, r = 1.6;
+      var cross = S.mark
+        ? '<path d="M' + (cx - r) + ',' + cy + ' H' + (cx + r) + ' M' + cx + ',' + (cy - r) + ' V' + (cy + r) + '" stroke="#777" stroke-width="0.25" fill="none"/>'
+        : '';
+      return '<svg class="outline" width="' + W + 'mm" height="' + H + 'mm" viewBox="0 0 ' + W + ' ' + H + '">' + shape + cross + '</svg>';
+    }
+
+    function makeTag(r, S, left, top) {
+      var tag = el('div', 'tag');
+      tag.style.cssText = 'left:' + left + 'mm;top:' + top + 'mm;width:' + S.width + 'mm;height:' + S.height + 'mm;';
+      tag.innerHTML = outlineSvg(S);
+
+      var T = Math.min(S.taper, S.height - 5);
+      var body = el('div', 'body');
+      body.style.paddingTop = (T + 1.5 * S.width / 45) + 'mm';     // keep text below the sloping corners
+
+      var desc = el('div', 'desc', r.desc);
+      desc.style.height = (0.14 * S.height) + 'mm';
+      body.appendChild(desc);
+      body.appendChild(el('div', 'maker', 'by ' + r.maker));
+      var qr = el('div', 'qr');
+      qr.innerHTML = qrSvg(r.url);       // drawn here from the link; nothing is sent anywhere
+      body.appendChild(qr);
+      body.appendChild(el('div', 'scan', 'Scan to pay'));
+      var pr = el('div', 'pricerow');
+      pr.appendChild(el('div', 'price', r.price));
+      pr.appendChild(el('div', 'code', r.code));
+      body.appendChild(pr);
+      tag.appendChild(body);
+      return tag;
+    }
+
     function render() {
-      applySize();
-      var copies = Math.max(1, Number(document.getElementById('copies').value) || 1);
+      var S = settings();
+      document.documentElement.style.setProperty('--s', (S.width / 45).toFixed(3));
+      var cols = Math.floor((PAGE_W - 2 * S.margin + S.gap) / (S.width + S.gap));
+      var nrows = Math.floor((PAGE_H - 2 * S.margin + S.gap) / (S.height + S.gap));
       var box = document.getElementById('preview');
+      var status = document.getElementById('status');
       box.innerHTML = '';
-      var count = 0;
-      rows.forEach(function (r) {
-        for (var c = 0; c < copies; c++) {
-          var label = el('div', 'label');
-          var qr = el('div', 'qr');
-          qr.innerHTML = qrSvg(r.url);   // SVG generated locally by the library from the URL
-          var text = el('div', 'text');
-          text.appendChild(el('div', 'desc', r.desc));
-          text.appendChild(el('div', 'maker', 'by ' + r.maker));
-          text.appendChild(el('div', 'price', r.price));
-          var code = el('div', 'code');
-          code.appendChild(el('b', '', r.code));
-          code.appendChild(document.createTextNode(' \u00b7 Scan to pay'));
-          text.appendChild(code);
-          label.appendChild(qr);
-          label.appendChild(text);
-          box.appendChild(label);
-          count++;
-        }
-      });
-      fitDescriptions();
-      fitCodes();
-      document.getElementById('status').textContent =
-        rows.length ? count + ' label(s) ready.' : 'No rows to print. Create links first, or select rows with links.';
+      status.className = '';
+      if (cols < 1 || nrows < 1) {
+        status.textContent = 'These tags are too big to fit on A4. Make them smaller or reduce the margin.';
+        status.className = 'warn';
+        return;
+      }
+      var gridW = cols * S.width + (cols - 1) * S.gap, gridH = nrows * S.height + (nrows - 1) * S.gap;
+      var left0 = (PAGE_W - gridW) / 2, top0 = (PAGE_H - gridH) / 2;
+      var perPage = cols * nrows;
+
+      var list = [];
+      rows.forEach(function (r) { for (var c = 0; c < S.copies; c++) list.push(r); });
+
+      var pages = Math.max(1, Math.ceil(list.length / perPage));
+      for (var p = 0; p < pages; p++) {
+        var sheet = el('div', 'sheet');
+        list.slice(p * perPage, (p + 1) * perPage).forEach(function (r, i) {
+          var col = i % cols, row = Math.floor(i / cols);
+          sheet.appendChild(makeTag(r, S, left0 + col * (S.width + S.gap), top0 + row * (S.height + S.gap)));
+        });
+        box.appendChild(sheet);
+      }
+      fitText(S);
+
+      var msg = list.length ? list.length + ' tag(s) on ' + pages + ' A4 page(s), ' + cols + ' x ' + nrows + ' per page.'
+                            : 'No rows to print. Create links first, or select rows with links.';
+      // The QR code must stay big enough to scan.
+      var q = document.querySelector('.qr svg');
+      if (q) {
+        var mm = q.getBoundingClientRect().width / (96 / 25.4);
+        var h = q.getBoundingClientRect().height / (96 / 25.4);
+        var size = Math.min(mm, h);
+        if (size < 20) { msg += ' Warning: the QR code is only ' + size.toFixed(0) + ' mm; make the tag taller or the descriptions shorter so it scans reliably.'; status.className = 'warn'; }
+      }
+      status.textContent = msg;
     }
 
-    // Shrink long descriptions until they fit their box (down to a readable minimum).
-    function fitDescriptions() {
-      var h = Number(document.getElementById('h').value) || 29;
-      var min = h * 0.08;   // mm
+    // Shrink long text until it fits (down to a readable minimum).
+    function fitText(S) {
+      var s = S.width / 45;
       document.querySelectorAll('.desc').forEach(function (d) {
-        var size = h * 0.13;
-        while (d.scrollHeight > d.clientHeight + 1 && size > min) {
-          size -= 0.2;
-          d.style.fontSize = size + 'mm';
+        var size = 3.4 * s;
+        while ((d.scrollHeight > d.clientHeight + 1 || d.scrollWidth > d.clientWidth + 1) && size > 2.2 * s) {
+          size -= 0.1 * s; d.style.fontSize = size + 'mm';
         }
+        if (d.scrollHeight > d.clientHeight + 1) d.style.alignItems = 'flex-start';   // too long: show the start, not the middle
+      });
+      document.querySelectorAll('.pricerow').forEach(function (row) {
+        var code = row.querySelector('.code'), price = row.querySelector('.price');
+        var cs = 2.7 * s, ps = 5.4 * s;
+        while (row.scrollWidth > row.clientWidth + 1 && cs > 1.9 * s) { cs -= 0.1 * s; code.style.fontSize = cs + 'mm'; }
+        while (row.scrollWidth > row.clientWidth + 1 && ps > 3.5 * s) { ps -= 0.1 * s; price.style.fontSize = ps + 'mm'; }
       });
     }
 
-    // The item code is what matters: if it doesn't fit beside "Scan to pay", drop that text,
-    // then shrink the code itself down to a readable minimum.
-    function fitCodes() {
-      var h = Number(document.getElementById('h').value) || 29;
-      var min = h * 0.06;   // mm
-      document.querySelectorAll('.code').forEach(function (c) {
-        if (c.scrollWidth > c.clientWidth + 1 && c.lastChild && c.lastChild.nodeType === 3) {
-          c.removeChild(c.lastChild);
-        }
-        var size = h * 0.095;
-        while (c.scrollWidth > c.clientWidth + 1 && size > min) {
-          size -= 0.1;
-          c.style.fontSize = size + 'mm';
-        }
+    function saveSettings() { google.script.run.saveLabelSettings(settings()); }
+    function applySettings(s) {
+      ['w', 'h', 'copies', 'taper', 'tip', 'gap', 'margin'].forEach(function (id) {
+        var key = { w: 'width', h: 'height' }[id] || id;
+        if (s[key] !== undefined) document.getElementById(id).value = s[key];
       });
-    }
-
-    function saveSettings() {
-      google.script.run.saveLabelSettings({
-        width: Number(document.getElementById('w').value),
-        height: Number(document.getElementById('h').value),
-        copies: Number(document.getElementById('copies').value)
-      });
+      document.getElementById('outline').checked = s.outline !== false;
+      document.getElementById('mark').checked = s.mark !== false;
     }
 
     document.getElementById('refresh').onclick = function () { saveSettings(); render(); };
     document.getElementById('print').onclick = function () { saveSettings(); render(); window.print(); };
 
     google.script.run.withSuccessHandler(function (s) {
-      document.getElementById('w').value = s.width;
-      document.getElementById('h').value = s.height;
-      document.getElementById('copies').value = s.copies;
+      applySettings(s);
       google.script.run.withSuccessHandler(function (data) { rows = data; render(); })
         .withFailureHandler(function (e) { document.getElementById('status').textContent = 'Error: ' + e.message; })
         .getLabelRows();

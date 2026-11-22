@@ -1,15 +1,17 @@
-# Google Sheet → Square links → label printer
+# Google Sheet → Square links → printed tags
 
-Type your products into a Google Sheet. One menu command creates a Square payment link for every new row, and another prints labels showing the **QR code, product description, maker name and price**.
+Type your products into a Google Sheet. One menu command creates a Square payment link for every new row, and another prints tags showing the **QR code, product description, maker name, price and item code**. The tags print on A4 card, and you cut them out and tie them on with ribbon.
 
-![Example label, 62 × 29 mm: description, maker, price, QR code and item code](label-example.png)
+![Example tag, 45 × 65 mm: description, maker, QR code, price and item code](label-example.png)
+
+![A4 sheet of 16 tags](tag-sheet-example.png)
 
 Files (in [`google-sheet/`](../google-sheet/)):
 
 | File | What it is |
 |---|---|
 | `Code.gs` | Adds the **Craft Hereford** menu; talks to Square |
-| `Labels.html` | The label preview/print window |
+| `Labels.html` | The tag preview and print window |
 
 ## How it fits together
 
@@ -17,7 +19,7 @@ Files (in [`google-sheet/`](../google-sheet/)):
 Makers tab + Locations tab (dropdown lists)
    └─ Products tab row (description, maker, location, price, commissions)
         └─ Craft Hereford ▸ Create Square links  →  link URL + item code written back to the row
-        └─ Craft Hereford ▸ Print labels     →  QR + text, one label per page, sized for your printer
+        └─ Craft Hereford ▸ Print tags       →  16 tapered tags per A4 sheet (QR + text), ready to print on card
 ```
 
 The Square access token is kept in the script's private properties, not in any cell. The QR code is drawn inside your browser from the link; nothing is sent to a QR website.
@@ -56,7 +58,7 @@ Start in sandbox: links work with Square's test cards and no real money moves.
 | **Settings** | The default venue commission (10%), the default selling commission (10%), and the list of selling-commission rates offered in the dropdown (0%, 5%, 10%, 15%, 20%, 25%, 30%). Edit the list to add rates such as 12.5%. |
 | **Products** | One row per item (see below). |
 
-Add makers and locations first, and delete the example row on each tab. Keep names unique and spelled the way you want them to appear on labels. If you rename a maker or location, re-pick it on the Products rows that used it.
+Add makers and locations first, and delete the example row on each tab. Keep names unique and spelled the way you want them to appear on the tags. If you rename a maker or location, re-pick it on the Products rows that used it.
 
 ### Add products
 On the **Products** tab fill in **Product description**, **Maker** (dropdown), **Location** (dropdown) and **Price (GBP)**. Leave Item code, link and Status for the script (the item code is made for you, see below). Keep descriptions short (about 40 characters or fewer); long ones are printed in a smaller font.
@@ -82,8 +84,8 @@ HCH-AJ-001
  └───────── location's code (Hereford Coffee House)
 ```
 
-- The code is saved as fixed text. It doesn't change if you sort or delete rows, or later change the maker or location of that row, so a printed label always matches the sheet and the Square payment.
-- The code appears in the Square payment link name and on the printed label, so a customer, a café or you can quote it.
+- The code is saved as fixed text. It doesn't change if you sort or delete rows, or later change the maker or location of that row, so a printed tag always matches the sheet and the Square payment.
+- The code appears in the Square payment link name and on the printed tag, so a customer, a café or you can quote it.
 - Two makers (or two locations) can end up with the same code, for example Amanda Jones and Alan Jenkins are both `AJ`. These cells turn red. Type a different code over the formula (`AMJ`) **before** adding their items.
 - This needs the script installed (see setup). Without it, the Item code column stays empty and you'd type codes yourself.
 
@@ -91,13 +93,16 @@ HCH-AJ-001
 **Craft Hereford → 1. Create Square links for new rows**.
 Each row without a link gets one, and the script writes back the link URL, and sets Status to *Listed*. Rows with a problem (no price, maker, location or commission rate) are skipped and listed in the message. Items already marked *Sold* never get a link, and rows that already have one are left alone.
 
-### Print labels
+### Print tags
 1. Optional: select the rows you want (select two or more rows). With no selection, every row with Status *Listed* is printed.
-2. **Craft Hereford → 2. Print labels…**
-3. Set your **label width and height in mm** and the number of copies, then **Print**. The size is remembered.
-4. In the browser print window: choose your **label printer**, set the paper size to match your label, **margins: None**, **scale: 100%**.
+2. **Craft Hereford → 2. Print tags…**
+3. You see a preview of A4 sheets. The default tag is **45 × 65 mm**, which fits **16 per A4 sheet** (4 across, 4 down). Change the width or height if you like, and set **Copies of each** for duplicates. Open **More options** to change the depth of the tapered end, the width of the tip, the gaps, or to switch the cut outline and hole marker off. Your settings are remembered.
+4. Click **Print**. In the print window choose **A4**, **Margins: None**, **Scale: 100%** (not "fit to page"), and switch **Headers and footers** off. Load your card and print.
+5. **Cut along the grey outline** and **punch the ribbon hole at the +** (the + sits in the middle of the tapered end, about 5 mm from the top edge, so a standard 6 mm punch fits).
 
-**Do a test print of one label and scan it with a phone before printing a whole batch.** A good scan on a printed label is the real check that the QR code works.
+Each tag shows the description, the maker, the QR code, the price and the item code. If a description is too long it is shrunk to fit; keep descriptions to about 40 characters. If the QR code would end up smaller than about 20 mm, the preview shows a warning in red: make the tag taller or the description shorter.
+
+**Do a test print of one sheet on plain paper first**, hold a printed tag against your actual card and punch, and scan it with a phone before printing a whole batch. A good scan is the real check that the QR code works.
 
 ### When an item sells: sync from Square
 Run **Craft Hereford ▸ 3. Sync sales from Square** (as often as you like; once a day or before a report is plenty). It reads your recent Square payments and, for each completed payment:
@@ -176,12 +181,14 @@ The **Lists** tab holds the calculated lists behind the dropdowns. There is noth
 
 > **Setting up a second copy:** *Craft Hereford ▸ Set up sheet* builds the Products, Makers, Locations and Settings tabs, but not the four report tabs. To start another copy with everything, use **File ▸ Make a copy** on the finished sheet, then clear the product rows.
 
-## Label printer tips
+## Printing on A4 card: tips
 
-- Common sizes: Brother DK-11209 is 62 × 29 mm (the default here); Dymo 99010 is 89 × 28 mm. Check the box your labels came in.
-- Install your printer's **driver** and add the matching **paper size** (custom or its label size) in the print dialog. A label printer will otherwise treat the page as A4.
-- If your print dialog scales or rotates the label, try changing orientation or choosing the printer's "no margins" option.
-- Keep the QR code above about 20 mm on its side. The default layout gives about 26 mm on a 29 mm label.
+- **Use your normal printer** and choose a paper type such as "card" or "thick paper" if it has one. Check that your printer takes the card weight you've chosen.
+- **Always print at 100%.** "Fit to page" or "shrink to fit" changes the tag size and the cut lines will no longer match your 45 × 65 mm tags.
+- **Tags print on one side only.** The back is left blank.
+- **Cutting:** a guillotine or craft knife and ruler along the grey outline works for the straight edges; use scissors for the tapered corners. The outline is light grey so it is barely visible once cut just inside it. Switch it off in **More options** if you'd rather cut by eye.
+- **The + marks the hole position** and sits where the hole is punched out, so it disappears. Switch it off in **More options** if you prefer.
+- **QR code size:** keep it at least 20 mm on its side. The default tag gives about 27 mm.
 - Printing from **Chrome** is the most reliable.
 
 ## Going live

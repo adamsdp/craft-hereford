@@ -34,7 +34,7 @@ Search `index.html` for these:
 
 ## Selling with QR codes
 
-- [`docs/google-sheet-labels.md`](docs/google-sheet-labels.md): enter products in a Google Sheet, create Square payment links, and print labels (QR code, description, maker, price) on a label printer. Scripts are in `google-sheet/`.
+- [`docs/google-sheet-labels.md`](docs/google-sheet-labels.md): enter products in a Google Sheet, create Square payment links, and print tapered tags (QR code, description, maker, price, item code) on A4 card to cut out and tie on with ribbon. Scripts are in `google-sheet/`.
 - [`docs/square-qr-codes.md`](docs/square-qr-codes.md): the manual route, making each link in the Square Dashboard.
 
 ## Logo files
