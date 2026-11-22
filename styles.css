@@ -166,3 +166,33 @@ p { margin: 0 0 1em; }
 @media (max-width: 460px) {
   .crafts { grid-template-columns: 1fr; }
 }
+
+/* Contact form */
+.contact-form {
+  max-width: 640px; margin: 0 auto; padding: 32px;
+  background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.contact-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+.contact-form label { display: block; font-weight: 700; color: var(--blue-deep); margin-bottom: 18px; }
+.contact-form input, .contact-form select, .contact-form textarea {
+  display: block; width: 100%; margin-top: 6px; padding: 12px 14px;
+  font: inherit; font-weight: 500; color: var(--text);
+  background: var(--cream-light); border: 2px solid #e6dcc6; border-radius: 12px;
+}
+.contact-form textarea { resize: vertical; min-height: 130px; }
+/* keep the hidden spam-trap field hidden (the input styles above would otherwise show it) */
+.contact-form input.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; border: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.contact-form { position: relative; }
+.contact-form input:focus, .contact-form select:focus, .contact-form textarea:focus {
+  outline: none; border-color: var(--blue); background: var(--white);
+}
+.contact-form button { border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: 1rem; }
+.contact-form button:disabled { opacity: .6; cursor: wait; transform: none; }
+.form-status { margin: 14px 0 0; font-weight: 600; min-height: 1.6em; }
+.form-status.ok { color: #2e7d4f; }
+.form-status.error { color: #b3412e; }
+
+@media (max-width: 600px) {
+  .contact-form { padding: 22px; }
+  .contact-form .form-row { grid-template-columns: 1fr; }
+}
