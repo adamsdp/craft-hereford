@@ -211,6 +211,7 @@ The **Lists** tab holds the calculated lists behind the dropdowns. There is noth
 ## Printing on A4 card: tips
 
 - **Use your normal printer** and choose a paper type such as "card" or "thick paper" if it has one. Check that your printer takes the card weight you've chosen.
+- **Blank pages between the sheets?** Set **Margins** to **None** and make sure **Scale** is **100%**. (Earlier versions made each sheet exactly A4 tall, so any margin pushed it onto an extra blank page; sheets are now built a little shorter than the page so ordinary margins no longer cause this.)
 - **Always print at 100%.** "Fit to page" or "shrink to fit" changes the tag size and the cut lines will no longer match your 45 × 65 mm tags.
 - **Tags print on one side only.** The back is left blank.
 - **Cutting:** a guillotine or craft knife and ruler along the grey outline works for the straight edges; use scissors for the tapered corners. The outline is light grey so it is barely visible once cut just inside it. Switch it off in **More options** if you'd rather cut by eye.
