@@ -272,6 +272,33 @@ function isCommitted_(sh, r) {
          status === 'Listed' || status === 'Sold';
 }
 
+/**
+ * "Venue paid?" shows N/A when the venue takes no commission (0%): there is nothing to pay.
+ * It never replaces a tick someone has already made, and puts the tick box back if the commission
+ * later becomes more than 0% or the venue is removed.
+ */
+function refreshVenuePaidNA_(sh, firstRow, lastRow) {
+  firstRow = Math.max(firstRow || 2, 2);
+  lastRow = Math.min(lastRow || (MAX_ROWS + 1), MAX_ROWS + 1);
+  var n = lastRow - firstRow + 1;
+  if (n < 1) return;
+  var pct = sh.getRange(firstRow, COL.VENUE_PCT, n, 1).getValues();
+  var paid = sh.getRange(firstRow, COL.VENUE_PAID, n, 1).getValues();
+  for (var i = 0; i < n; i++) {
+    var p = pct[i][0], q = paid[i][0];
+    var zero = typeof p === 'number' && p === 0;
+    if (zero && (q === '' || q === false)) {
+      var cell = sh.getRange(firstRow + i, COL.VENUE_PAID);
+      cell.clearDataValidations();        // it is text now, not a tick box
+      cell.setValue('N/A');
+    } else if (!zero && q === 'N/A') {
+      var back = sh.getRange(firstRow + i, COL.VENUE_PAID);
+      back.insertCheckboxes();            // a tick box again (unticked)
+      back.setValue(false);
+    }
+  }
+}
+
 function productsEdited_(sh, rg) {
   var first = Math.max(rg.getRow(), 2);
   var last = Math.min(rg.getRow() + rg.getNumRows() - 1, MAX_ROWS + 1);
@@ -342,6 +369,7 @@ function productsEdited_(sh, rg) {
       venue.setFormula(venueFormula_(r));
     }
   }
+  refreshVenuePaidNA_(sh, first, last);
 }
 
 function locationsEdited_(sh, rg) {
@@ -352,6 +380,11 @@ function locationsEdited_(sh, rg) {
     var named = String(sh.getRange(r, 1).getValue()).trim() !== '';
     var pct = sh.getRange(r, 2);
     if (named && pct.getValue() === '') pct.setValue(venueDefault);
+  }
+  // A commission rate may have changed to or from 0%, which decides who needs a "Venue paid?" tick.
+  if (rg.getColumn() <= 2 && rg.getColumn() + rg.getNumColumns() - 1 >= 2) {
+    var products = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
+    if (products) refreshVenuePaidNA_(products, 2, MAX_ROWS + 1);
   }
 }
 
@@ -802,6 +835,7 @@ function syncSales() {
   var res = applyPayments_(sh, payments, function (id) { return fetchOrderText_(cfg, id); });
   var off = switchOffSoldLinks_(sh, cfg);
   props.setProperty('SQUARE_LAST_SYNC', now.toISOString());
+  refreshVenuePaidNA_(sh, 2, MAX_ROWS + 1);
 
   var byStatus = {};
   payments.forEach(function (p) { byStatus[p.status || '?'] = (byStatus[p.status || '?'] || 0) + 1; });
@@ -997,51 +1031,64 @@ function getReportData(kind, sel) {
     if (kind === 'statement') setIfChanged_(sh.getRange('B6'), sel.month);
   }
   SpreadsheetApp.flush();
-  Utilities.sleep(500);            // give the formulas a moment to recalculate
-  SpreadsheetApp.flush();
 
-  if (kind === 'monthly') {
-    var table = function (col, width) {
-      var header = sh.getRange(17, col, 1, width).getDisplayValues()[0];
-      var total = sh.getRange(18, col, 1, width).getDisplayValues()[0];
-      var rows = sh.getRange(19, col, 100, width).getDisplayValues().filter(function (r) {
-        return String(r[0]).trim() !== '' && String(r[1]).trim() !== '0';
-      });
-      return { header: header, total: total, rows: rows };
-    };
+  var readNow = function () {
+    if (kind === 'monthly') {
+      var table = function (col, width) {
+        var header = sh.getRange(17, col, 1, width).getDisplayValues()[0];
+        var total = sh.getRange(18, col, 1, width).getDisplayValues()[0];
+        var rows = sh.getRange(19, col, 100, width).getDisplayValues().filter(function (r) {
+          return String(r[0]).trim() !== '' && String(r[1]).trim() !== '0';
+        });
+        return { header: header, total: total, rows: rows };
+      };
+      return {
+        title: 'Monthly selling report', period: sh.getRange('B3').getDisplayValue(), generated: generated,
+        totals: sh.getRange('A8:B15').getDisplayValues().filter(function (r) { return r[0] && String(r[0]).indexOf('Difference') !== 0; }),
+        makers: table(1, 6), venues: table(8, 4)
+      };
+    }
+
+    var lists = ss.getSheetByName(LISTS_SHEET);
+    var ready = lists ? String(lists.getRange(kind === 'statement' ? 'H2' : 'I2').getDisplayValue()) === 'TRUE' : true;
+    var type = sh.getRange('B4').getDisplayValue(), name = sh.getRange('B5').getDisplayValue();
+    if (!ready) {
+      return { title: kind === 'statement' ? 'Statement' : 'Outstanding payment', period: '', generated: generated,
+               error: 'Please choose a ' + type.toLowerCase() + ' from the list.' };
+    }
+    var who = whoFor_(ss, type, name);
+
+    if (kind === 'statement') {
+      var blk = listBlock_(sh, 18, 7, 300);
+      var none = blk.rows.length === 1 && String(blk.rows[0][0]).indexOf('No items sold') === 0;
+      return {
+        title: 'Statement', period: sh.getRange('B6').getDisplayValue(), generated: generated, who: who,
+        summary: sh.getRange('A10:B15').getDisplayValues().filter(function (r) { return r[0]; }),
+        items: { header: blk.header, rows: none ? [] : blk.rows, message: 'No items sold in this month.' }
+      };
+    }
+
+    var blk2 = listBlock_(sh, 14, 5, 300);
+    var nothing = blk2.rows.length === 1 && String(blk2.rows[0][0]).indexOf('Nothing outstanding') === 0;
     return {
-      title: 'Monthly selling report', period: sh.getRange('B3').getDisplayValue(), generated: generated,
-      totals: sh.getRange('A8:B15').getDisplayValues().filter(function (r) { return r[0] && String(r[0]).indexOf('Difference') !== 0; }),
-      makers: table(1, 6), venues: table(8, 4)
+      title: 'Outstanding payment', period: '', generated: generated, who: who,
+      amount: sh.getRange('B7').getDisplayValue(), count: sh.getRange('B8').getDisplayValue(),
+      items: { header: blk2.header, rows: nothing ? [] : blk2.rows, message: 'Nothing is outstanding.' }
     };
-  }
-
-  var lists = ss.getSheetByName(LISTS_SHEET);
-  var ready = lists ? String(lists.getRange(kind === 'statement' ? 'H2' : 'I2').getDisplayValue()) === 'TRUE' : true;
-  var type = sh.getRange('B4').getDisplayValue(), name = sh.getRange('B5').getDisplayValue();
-  if (!ready) {
-    return { title: kind === 'statement' ? 'Statement' : 'Outstanding payment', period: '', generated: generated,
-             error: 'Please choose a ' + type.toLowerCase() + ' from the list.' };
-  }
-  var who = whoFor_(ss, type, name);
-
-  if (kind === 'statement') {
-    var blk = listBlock_(sh, 18, 7, 300);
-    var none = blk.rows.length === 1 && String(blk.rows[0][0]).indexOf('No items sold') === 0;
-    return {
-      title: 'Statement', period: sh.getRange('B6').getDisplayValue(), generated: generated, who: who,
-      summary: sh.getRange('A10:B15').getDisplayValues().filter(function (r) { return r[0]; }),
-      items: { header: blk.header, rows: none ? [] : blk.rows, message: 'No items sold in this month.' }
-    };
-  }
-
-  var blk2 = listBlock_(sh, 14, 5, 300);
-  var nothing = blk2.rows.length === 1 && String(blk2.rows[0][0]).indexOf('Nothing outstanding') === 0;
-  return {
-    title: 'Outstanding payment', period: '', generated: generated, who: who,
-    amount: sh.getRange('B7').getDisplayValue(), count: sh.getRange('B8').getDisplayValue(),
-    items: { header: blk2.header, rows: nothing ? [] : blk2.rows, message: 'Nothing is outstanding.' }
   };
+
+  // Formulas can take a moment to catch up after a change. Read, wait, read again, and only trust the
+  // result once two reads in a row agree, so a printout never shows figures from before the change.
+  Utilities.sleep(500);
+  SpreadsheetApp.flush();
+  var out = readNow();
+  for (var tries = 0; tries < 6; tries++) {
+    Utilities.sleep(400);
+    var again = readNow();
+    if (JSON.stringify(again) === JSON.stringify(out)) break;
+    out = again;
+  }
+  return out;
 }
 
 // ---- Mark as paid ------------------------------------------------------------
