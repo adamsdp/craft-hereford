@@ -14,6 +14,7 @@ var LOCATIONS = 'Locations';
 var SETTINGS = 'Settings';
 var CURRENCY = 'GBP';
 var SQUARE_VERSION = '2025-10-16';
+var SCRIPT_VERSION = '2026-11-22.4';   // shown in Check Square connection, so you can tell which copy is pasted in
 var ACCEPT_WALLETS = true;   // offer Apple Pay and Google Pay on the checkout page (shown only on devices that support them)
 var MAX_ROWS = 500;          // rows pre-filled with formulas and dropdowns on Products
 var LIST_ROWS = 1000;        // rows covered by the Makers / Locations dropdown ranges
@@ -243,11 +244,16 @@ function setupProducts_(sh, makers, locations, settings) {
 // ---- Automatic defaults when you type in the sheet -------------------------
 /** Simple trigger: runs on every manual edit, no authorisation needed. */
 function onEdit(e) {
-  if (!e || !e.range) return;
-  var sh = e.range.getSheet();
-  var name = sh.getName();
-  if (name === SHEET_NAME) productsEdited_(sh, e.range);
-  else if (name === LOCATIONS) locationsEdited_(sh, e.range);
+  try {
+    if (!e || !e.range) return;
+    var sh = e.range.getSheet();
+    var name = sh.getName();
+    if (name === SHEET_NAME) productsEdited_(sh, e.range);
+    else if (name === LOCATIONS) locationsEdited_(sh, e.range);
+  } catch (err) {
+    // A silent failure is the worst kind: tell the person, so it can be reported.
+    try { SpreadsheetApp.getActive().toast('The sheet helper hit a problem: ' + err.message, 'Craft Hereford', 20); } catch (e2) { /* nothing more to do */ }
+  }
 }
 
 function settingNumber_(a1, fallback) {
@@ -832,7 +838,7 @@ function checkSquare() {
   var ui = SpreadsheetApp.getUi();
   var cfg = squareConfig_();
   var since = new Date(Date.now() - 90 * DAY_MS), now = new Date();
-  var lines = ['Environment: ' + cfg.env, 'Location ID in use: ' + cfg.location];
+  var lines = ['Script version: ' + SCRIPT_VERSION, 'Environment: ' + cfg.env, 'Location ID in use: ' + cfg.location];
   try {
     var scriptTz = Session.getScriptTimeZone();
     var sheetTz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
