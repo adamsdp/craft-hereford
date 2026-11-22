@@ -413,6 +413,7 @@ function createLinks() {
     var r = data[i];
     var rowNum = i + 2;
     if (r[COL.URL - 1] || !String(r[COL.DESC - 1]).trim()) continue; // already has link / empty row
+    if (r[COL.STATUS - 1] === 'Sold') continue;   // never make a link for something already sold
 
     var pence = toPence(r[COL.PRICE - 1]);
     if (!pence) { problems.push('Row ' + rowNum + ': missing or invalid price'); continue; }
@@ -453,7 +454,7 @@ function createLinks() {
     sh.getRange(rowNum, COL.CODE).setValue(code);
     sh.getRange(rowNum, COL.URL).setValue(json.payment_link.url);
     sh.getRange(rowNum, COL.LINK_ID).setValue(json.payment_link.id);
-    sh.getRange(rowNum, COL.LISTED).setValue(new Date());
+    if (!r[COL.LISTED - 1]) sh.getRange(rowNum, COL.LISTED).setValue(new Date());   // keep an existing listed date
     sh.getRange(rowNum, COL.STATUS).setValue('Listed');
     made++;
   }

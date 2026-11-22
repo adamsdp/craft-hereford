@@ -90,7 +90,7 @@ HCH-AJ-001
 
 ### Create links
 **Craft Hereford → 1. Create Square links for new rows**.
-Each row without a link gets one, and the script writes back the link URL, and sets Status to *Listed*. Rows with a problem (no price, maker, location or commission rate) are skipped and listed in the message.
+Each row without a link gets one, and the script writes back the link URL, and sets Status to *Listed*. Rows with a problem (no price, maker, location or commission rate) are skipped and listed in the message. Items already marked *Sold* never get a link, and rows that already have one are left alone.
 
 ### Print labels
 1. Optional: select the rows you want (select two or more rows). With no selection, every row with Status *Listed* is printed.
