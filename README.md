@@ -24,8 +24,8 @@ To use your own domain (e.g. `crafthereford.co.uk`), add it under **Settings →
 Search `index.html` for these:
 
 - **Instagram and Facebook links**: in the *Say hello* section (marked `TODO`), replace `https://www.instagram.com/` and `https://www.facebook.com/` with your page addresses.
-- **Cabinet locations**: in the *Find a cabinet* section there's a commented template. Copy it once for each host café and remove the "coming soon" card.
-- **Contact for makers and cafés**: the *Get in touch* and *Host a cabinet* buttons currently scroll to the social links. If you want them to open an email instead, change their `href` to `mailto:your@email.address`.
+- **Cabinet locations**: in the *Find a cabinet* section there's a commented template. Copy it once for each new host café and put it before the "More cafés coming soon" card.
+- **Contact form**: the *Get in touch* and *Host a cabinet* buttons jump to the contact form at the bottom of the page and pre-select who the message is from (maker or café). Messages are sent through Formspree (formspree.io), which emails them to the address on the Formspree account. To use a different Formspree form, change `data-endpoint` on the `<form>` in the *Get in touch* section; if you remove it, the form is hidden.
 
 ## Editing tips
 
