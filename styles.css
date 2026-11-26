@@ -107,7 +107,6 @@ p { margin: 0 0 1em; }
   border: 2px solid #e3edf3; font-weight: 600;
 }
 .craft-icon { font-size: 1.8rem; line-height: 1; }
-.note { text-align: center; color: var(--muted); }
 
 /* Locations */
 .locations { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; }
