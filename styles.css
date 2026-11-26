@@ -114,7 +114,7 @@ p { margin: 0 0 1em; }
 .location { background: var(--white); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); border-top: 6px solid var(--blue); }
 .location p { color: var(--muted); }
 .location a { font-weight: 700; }
-.location-soon { text-align: center; max-width: 560px; margin: 0 auto; border-top-color: var(--cream); }
+.location-more { background: transparent; box-shadow: none; border: 2px dashed var(--blue); padding-top: 32px; /* lines its heading up with the solid cards */ }
 
 /* Cards */
 .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; margin-top: 36px; }

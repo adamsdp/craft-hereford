@@ -24,7 +24,7 @@ To use your own domain (e.g. `crafthereford.co.uk`), add it under **Settings →
 Search `index.html` for these:
 
 - **Instagram and Facebook links**: in the *Say hello* section (marked `TODO`), replace `https://www.instagram.com/` and `https://www.facebook.com/` with your page addresses.
-- **Cabinet locations**: in the *Find a cabinet* section there's a commented template. Copy it once for each host café and remove the "coming soon" card.
+- **Cabinet locations**: in the *Find a cabinet* section there's a commented template. Copy it once for each new host café and put it before the "More cafés coming soon" card.
 - **Contact for makers and cafés**: the *Get in touch* and *Host a cabinet* buttons currently scroll to the social links. If you want them to open an email instead, change their `href` to `mailto:your@email.address`.
 
 ## Editing tips
