@@ -1,6 +1,6 @@
 # Craft Hereford website
 
-A simple, customer-facing website for **Craft Hereford**, a volunteer-run community group supporting local crafters, with display cabinets in independent coffee shops across Herefordshire.
+A simple, customer-facing website for **Craft Hereford**, a community group supporting local crafters, with display cabinets in independent coffee shops across Herefordshire.
 
 It's plain HTML and CSS: no build step and nothing to install.
 
