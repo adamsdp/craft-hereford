@@ -72,17 +72,33 @@
     media.appendChild(next);
     media.insertAdjacentElement('afterend', dots);
 
-    function current() { return Math.round(track.scrollLeft / track.clientWidth); }
+    // Where the track has to scroll to for each slide (slides are narrower than the card)
+    function target(i) {
+      var pad = parseFloat(getComputedStyle(track).paddingLeft) || 0;
+      return Math.min(slides[i].offsetLeft - pad, track.scrollWidth - track.clientWidth);
+    }
+    function current() {
+      var best = 0;
+      for (var i = 1; i < slides.length; i++) {
+        if (Math.abs(target(i) - track.scrollLeft) < Math.abs(target(best) - track.scrollLeft)) best = i;
+      }
+      return best;
+    }
     function go(i) {
       i = Math.max(0, Math.min(slides.length - 1, i));
-      track.scrollTo({ left: i * track.clientWidth, behavior: reduceMotion ? 'auto' : 'smooth' });
+      track.scrollTo({ left: target(i), behavior: reduceMotion ? 'auto' : 'smooth' });
     }
     function update() {
       var i = current();
       prev.hidden = i === 0;
       next.hidden = i === slides.length - 1;
       dotButtons.forEach(function (d, j) { d.setAttribute('aria-current', j === i ? 'true' : 'false'); });
+      // The half-visible slides at the sides: tapping one brings it into view
+      Array.prototype.forEach.call(slides, function (slide, j) { slide.classList.toggle('is-peek', j !== i); });
     }
+    Array.prototype.forEach.call(slides, function (slide, j) {
+      slide.addEventListener('click', function () { if (slide.classList.contains('is-peek')) go(j); });
+    });
     prev.addEventListener('click', function () { go(current() - 1); });
     next.addEventListener('click', function () { go(current() + 1); });
     track.addEventListener('scroll', function () { window.requestAnimationFrame(update); }, { passive: true });

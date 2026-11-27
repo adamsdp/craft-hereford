@@ -115,19 +115,24 @@ p { margin: 0 0 1em; }
 .location h3 { margin-bottom: 0.3em; }
 
 /* Photo and map carousel at the top of each cabinet card */
-.location-media { position: relative; margin: -28px -28px 20px; }
-.location-slides { display: flex; aspect-ratio: 16 / 10; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; background: var(--cream-light); }
+.location-media { position: relative; margin: -28px -28px 16px; padding-top: 14px; }
+.location-slides { position: relative; display: flex; gap: 10px; padding: 0 14px; scroll-padding: 0 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .location-slides::-webkit-scrollbar { display: none; }
-.location-slide { flex: 0 0 100%; width: 100%; height: 100%; max-width: none; scroll-snap-align: start; object-fit: cover; }
+/* Each slide is narrower than the card, so the next one peeks in at the side */
+.location-slide { flex: 0 0 calc(100% - 56px); width: calc(100% - 56px); max-width: none; aspect-ratio: 16 / 10; height: auto; scroll-snap-align: start; object-fit: cover; border-radius: 12px; overflow: hidden; background: var(--cream-light); }
+.location-slide:only-child { flex-basis: 100%; width: 100%; }
+.location-slide:last-child:not(:only-child) { scroll-snap-align: end; }
 .location-map iframe { display: block; width: 100%; height: 100%; border: 0; }
-.location-media-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; padding: 8px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.92); color: var(--blue-deep); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); cursor: pointer; }
+.location-slide.is-peek { cursor: pointer; }
+.location-slide.is-peek iframe { pointer-events: none; }
+.location-media-btn { position: absolute; top: calc(50% + 7px); transform: translateY(-50%); width: 38px; height: 38px; padding: 8px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.92); color: var(--blue-deep); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); cursor: pointer; }
 .location-media-btn svg { display: block; width: 100%; height: 100%; }
 .location-media-btn:hover { background: var(--white); }
 .location-media-btn:focus-visible { outline: 3px solid var(--blue-dark); outline-offset: 2px; }
 .location-media-btn[hidden] { display: none; }
-.location-media-prev { left: 10px; }
-.location-media-next { right: 10px; }
-.location-dots { display: flex; justify-content: center; gap: 8px; margin: -8px 0 14px; }
+.location-media-prev { left: 22px; }
+.location-media-next { right: 22px; }
+.location-dots { display: flex; justify-content: center; gap: 8px; margin: -4px 0 14px; }
 .location-dot { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: rgba(47, 85, 104, 0.25); cursor: pointer; }
 .location-dot[aria-current="true"] { background: var(--blue); }
 .location-dot:focus-visible { outline: 3px solid var(--blue-dark); outline-offset: 2px; }
