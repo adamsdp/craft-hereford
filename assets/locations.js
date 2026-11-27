@@ -59,11 +59,13 @@
     var next = button('location-media-next', 'Next', 'M9 5l7 7-7 7');
     var dots = document.createElement('div');
     dots.className = 'location-dots';
+    var photoCount = 0;
     var dotButtons = Array.prototype.map.call(slides, function (slide, i) {
+      var isMap = slide.classList.contains('location-map');
       var d = document.createElement('button');
       d.type = 'button';
-      d.className = 'location-dot' + (slide.classList.contains('location-map') ? ' is-map' : '');
-      d.setAttribute('aria-label', slide.classList.contains('location-map') ? 'Show map' : 'Show photo ' + (i + 1));
+      d.className = 'location-dot' + (isMap ? ' is-map' : '');
+      d.setAttribute('aria-label', isMap ? 'Show map' : 'Show photo ' + (++photoCount));
       d.addEventListener('click', function () { go(i); });
       dots.appendChild(d);
       return d;
