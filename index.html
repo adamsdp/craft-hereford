@@ -141,6 +141,8 @@
           In the directions link, use + for spaces and %26 for "&".
           Each card has a carousel of photos and a map. Photos go in assets/locations/, should be
           landscape, and are cropped slightly to 16:10. Add one <img class="location-slide"> line per photo.
+          A portrait photo would lose most of its height, so make a 16:10 copy with blurred sides first
+          (like toast-and-tonic-cabinet.jpg).
           For the map, get the café's coordinates from Google Maps (right-click on it and click the
           numbers at the top) and put the first number in data-lat and the second in data-lon.
 
@@ -162,6 +164,7 @@
               <div class="location-slides">
                 <img class="location-slide" src="assets/locations/toast-and-tonic.jpg" alt="The Toast &amp; Tonic shopfront on Bridge Street, Hereford" width="1200" height="900" loading="lazy">
                 <div class="location-slide location-map" data-lat="52.05344" data-lon="-2.71867" data-name="Toast &amp; Tonic"></div>
+                <img class="location-slide" src="assets/locations/toast-and-tonic-cabinet.jpg" alt="The Craft Hereford cabinet just inside the door at Toast &amp; Tonic, with handmade pieces on its shelves" width="1200" height="750" loading="lazy">
               </div>
             </div>
             <h3>Toast &amp; Tonic</h3>
