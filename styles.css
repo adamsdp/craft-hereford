@@ -111,8 +111,31 @@ p { margin: 0 0 1em; }
 /* Locations */
 .locations { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; }
 .location { background: var(--white); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); border-top: 6px solid var(--blue); overflow: hidden; }
-.location-photo { display: block; width: calc(100% + 56px); max-width: none; margin: -28px -28px 22px; aspect-ratio: 16 / 10; object-fit: cover; }
-.location p { color: var(--muted); }
+.location p { color: var(--muted); margin-bottom: 0.6em; }
+.location h3 { margin-bottom: 0.3em; }
+
+/* Photo and map carousel at the top of each cabinet card */
+.location-media { position: relative; margin: -28px -28px 16px; padding-top: 14px; }
+.location-slides { position: relative; display: flex; gap: 10px; padding: 0 14px; scroll-padding: 0 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.location-slides::-webkit-scrollbar { display: none; }
+/* Each slide is narrower than the card, so the next one peeks in at the side */
+.location-slide { flex: 0 0 calc(100% - 56px); width: calc(100% - 56px); max-width: none; aspect-ratio: 16 / 10; height: auto; scroll-snap-align: start; object-fit: cover; border-radius: 12px; overflow: hidden; background: var(--cream-light); }
+.location-slide:only-child { flex-basis: 100%; width: 100%; }
+.location-slide:last-child:not(:only-child) { scroll-snap-align: end; }
+.location-map iframe { display: block; width: 100%; height: 100%; border: 0; }
+.location-slide.is-peek { cursor: pointer; }
+.location-slide.is-peek iframe { pointer-events: none; }
+.location-media-btn { position: absolute; top: calc(50% + 7px); transform: translateY(-50%); width: 38px; height: 38px; padding: 8px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.92); color: var(--blue-deep); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); cursor: pointer; }
+.location-media-btn svg { display: block; width: 100%; height: 100%; }
+.location-media-btn:hover { background: var(--white); }
+.location-media-btn:focus-visible { outline: 3px solid var(--blue-dark); outline-offset: 2px; }
+.location-media-btn[hidden] { display: none; }
+.location-media-prev { left: 22px; }
+.location-media-next { right: 22px; }
+.location-dots { display: flex; justify-content: center; gap: 8px; margin: -4px 0 14px; }
+.location-dot { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: rgba(47, 85, 104, 0.25); cursor: pointer; }
+.location-dot[aria-current="true"] { background: var(--blue); }
+.location-dot:focus-visible { outline: 3px solid var(--blue-dark); outline-offset: 2px; }
 .location a { font-weight: 700; }
 .location-more { background: transparent; box-shadow: none; border: 2px dashed var(--blue); display: flex; flex-direction: column; justify-content: center; }
 
