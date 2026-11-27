@@ -110,10 +110,11 @@ p { margin: 0 0 1em; }
 
 /* Locations */
 .locations { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; }
-.location { background: var(--white); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); border-top: 6px solid var(--blue); }
+.location { background: var(--white); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); border-top: 6px solid var(--blue); overflow: hidden; }
+.location-photo { display: block; width: calc(100% + 56px); max-width: none; margin: -28px -28px 22px; aspect-ratio: 16 / 10; object-fit: cover; }
 .location p { color: var(--muted); }
 .location a { font-weight: 700; }
-.location-more { background: transparent; box-shadow: none; border: 2px dashed var(--blue); padding-top: 32px; /* lines its heading up with the solid cards */ }
+.location-more { background: transparent; box-shadow: none; border: 2px dashed var(--blue); display: flex; flex-direction: column; justify-content: center; }
 
 /* Cards */
 .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; margin-top: 36px; }
