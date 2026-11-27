@@ -140,11 +140,14 @@
           To add a café, copy a <li class="location"> block and put it before the "More cafés" card.
           In the directions link, use + for spaces and %26 for "&".
           Photos go in assets/locations/ and should be landscape; they are cropped slightly to 16:10.
+          For the map, get the café's coordinates from Google Maps (right-click on it and click the
+          numbers at the top) and put the first number in data-lat and the second in data-lon.
 
           <li class="location">
             <img class="location-photo" src="assets/locations/cafe-name.jpg" alt="The Café name shopfront" width="512" height="384" loading="lazy">   (optional: delete this line if there's no photo)
             <h3>Café name</h3>
             <p>Street<br>Town Postcode</p>
+            <div class="location-map" data-lat="52.00000" data-lon="-2.70000" data-name="Café name"></div>   (optional: the map)
             <a href="https://www.google.com/maps/search/?api=1&amp;query=Café+name+Street+Town+Postcode" target="_blank" rel="noopener">Get directions</a>
           </li>
         -->
@@ -153,6 +156,7 @@
             <img class="location-photo" src="assets/locations/toast-and-tonic.jpg" alt="The Toast &amp; Tonic shopfront on Bridge Street, Hereford" width="1200" height="900" loading="lazy">
             <h3>Toast &amp; Tonic</h3>
             <p>16–17 Bridge Street<br>Hereford HR4 9DF</p>
+            <div class="location-map" data-lat="52.05344" data-lon="-2.71867" data-name="Toast &amp; Tonic"></div>
             <a href="https://www.google.com/maps/search/?api=1&amp;query=Toast+%26+Tonic+16-17+Bridge+St+Hereford+HR4+9DF" target="_blank" rel="noopener">Get directions</a>
           </li>
           <li class="location location-more">
@@ -262,5 +266,6 @@
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
   <script src="assets/contact.js"></script>
+  <script src="assets/maps.js"></script>
 </body>
 </html>
